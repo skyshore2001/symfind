@@ -13,7 +13,7 @@ if (@ARGV < 1) {
 	print "Usage: symfind [repo]\n";
 	exit;
 }
-my $MAX = 10;
+my $MAX = 25;
 my $EDITOR = 'vi';
 my $outputln = defined $ENV{SYM_SVR};
 
@@ -258,7 +258,7 @@ s {patterns}
   symbol search
 go {num}
   open the {num}th result 
-max [num=10]
+max [num=25]
   set max displayed result
 editor [prog=vi]
   set default viewer for go.

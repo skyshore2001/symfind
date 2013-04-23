@@ -36,6 +36,7 @@ func! s:openSymfind(exname)
 		setl hidden
 		setl nowrap
 		setl cursorline
+		setl nonumber
 " 		setl winfixheight
 " 		setl winfixwidth
 		call setline(1, defcmd . ' ')
@@ -46,16 +47,27 @@ func! s:openSymfind(exname)
 	inoremap <silent> <buffer> <cr> <c-o>:call SF_call()<cr>
 	nnoremap <silent> <buffer> <cr> :call SF_go('')<cr>
 	nnoremap <silent> <buffer> <s-cr> :call SF_go(1)<cr>
+	nnoremap <silent> <buffer> s<cr> :call SF_go(1)<cr>
 	nmap <silent> <buffer> <2-leftmouse> <cr>
-	nnoremap <silent> <buffer> <esc> :hide<cr>
-	nmap <silent> <buffer> q <esc>
+	nnoremap <silent> <buffer> q :hide<cr>
+	nnoremap <silent> <buffer> <c-w>H :call SF_setPreview(1)<cr>
 	1
 	starti!
 endfunc
 
+func! SF_setPreview(force)
+	if !a:force && exists('b:preview') && b:preview
+		return
+	endif
+	let b:preview = 1
+	wincmd H
+	vert res 40
+endf
+
 func! SF_call()
 	if line('.') > 2
 		call SF_go('')
+		return
 	endif
 	let s = getline(1)
 	let cmd = 'symsvr.pl -c "' . s . '"'
@@ -76,14 +88,12 @@ func! SF_go(splitwnd)
 		return
 	endif
 	let ls = split(getline('.'), "\t")
-	if len(ls) < 3
+	if ls[0] !~ '^\d\+:'
 		return
 	endif
 	let f = ls[-1] . '/' . ls[-2]
 	if a:splitwnd || b:preview
-		let b:preview = 1
-		wincmd H
-		vert res 40
+		call SF_setPreview(0)
 		exe (winnr()+1) . 'wincmd w'
 	endif
 	let cmd = 'e ' . substitute(f, '\v(.+):(\d+)$', '+\2 \1', 0)
@@ -114,7 +124,7 @@ func! s:setSyntax ()
 	hi link sfKeyword Identifier
 	hi link sfExtra Special
 	hi link sfFile Macro
-	hi link sfFolder Special
+"	hi link sfFolder Special
 endf
 
 " TODO

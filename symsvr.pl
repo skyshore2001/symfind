@@ -8,6 +8,7 @@ use IO::Handle;
 my $DEF_PORT = 20000;
 my $INST_NO = 0;
 my $DEBUG = $ENV{DEBUG};
+my $IS_MSWIN = $^O eq 'MSWin32';
 
 ###### global
 my $g_tgtpid;
@@ -66,7 +67,7 @@ sub new # ({isclient=>0})
 		$this->{sock} = IO::Socket::INET->new (
 			#LocalAddr => '127.0.0.1',
 			LocalPort => $TCP_PORT,
-#			Reuse => 1,
+			Reuse => !$IS_MSWIN,
 # 			ReuseAddr => 1,
 # 			ReusePort => 1,
 			Proto => 'tcp',
