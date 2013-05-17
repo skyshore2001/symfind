@@ -1,0 +1,22 @@
+2013/05/17 13:17:37
+> NF201305.1 - dir replace
+v1.1
+
+Requirement:
+if the path of your source code changes, the old repo should still work, no need to re-scan.
+
+Design:
+Add "dir" command to support dir replace. You can define multiple replace rules in one line.
+e.g. 
+	> dir
+	(show dir definition)
+	> dir depot=depot2
+	(define 1 rule: "depot" -> "depot2")
+	> dir depot=depot2;/mnt/data=/home
+	(define 2 rules: "depot" -> "depot2", "/mnt/data" -> "/home")
+
+the final result
+	/mnt/data/depot/sbo/source/1.cpp
+will be replaced to 
+	/home/depot2/sbo/source/1.cpp
+

@@ -17,9 +17,18 @@ my $outfile = '1.repo.gz';
 GetOptions("o=s", \$outfile);
 $outfile .= '.gz' if $outfile !~ /.gz/i;
 
-my @PRJ = @ARGV;
-my %files; # elem: fullname -> idx
 my $sep = $IS_MSWIN? '\\': '/';
+my @PRJ = @ARGV;
+for (@PRJ) {
+	s/$sep{2,}/$sep/g;
+	s/$sep+$//;
+	unless (-d $_) {
+		print STDERR "*** cannot find folder $_\n";
+		exit;
+	}
+}
+
+my %files; # elem: fullname -> idx
 
 $| = 1;
 print "=== scan files...\n";

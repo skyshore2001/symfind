@@ -17,6 +17,9 @@ my $MAX = 25;
 my $EDITOR = 'vi';
 my $outputln = defined $ENV{SYM_SVR};
 
+my $REPLACE_DIR = '';
+my @REPLACE_DIR_PAT= ();
+
 my @symbols; # elem: [$NAME, $FILE, $LINE, $KIND $EXTRA]
 my ($IDX_NAME, $IDX_FILE, $IDX_LINE, $IDX_KIND, $IDX_EXTRA) = (0..10);
 
@@ -50,16 +53,29 @@ my @filelist = values(%files);
 print "load " . scalar(@filelist) . " files.\n";
 print "load " . scalar(@symbols) . " symbols.\n";
 
+sub getFolderByIdx # ($idx)
+{
+	my ($idx) = @_;
+	my $d = $folders{$idx};
+	if (@REPLACE_DIR_PAT >0) {
+		for (@REPLACE_DIR_PAT) {
+			$d =~ s/$_->[0]/$_->[1]/;
+		}
+	}
+	return $d;
+}
+
 sub getFile # ($fileobj)
 {
 	my ($fileobj) = @_;
-	return $folders{$fileobj->{dir}} . '/' . $fileobj->{name};
+	return  getFolderByIdx($fileobj->{dir}) . '/' . $fileobj->{name};
 }
 
 sub getFileByIdx # ($fileidx)
 {
 	return getFile($files{$_[0]});
 }
+
 sub queryFile # ($what, $out)
 {
 	my ($what, $out) = @_;
@@ -106,6 +122,7 @@ sub queryFile # ($what, $out)
 		}
 		if ($ok) {
 			++$cnt;
+			$ex = getFolderByIdx($_->{dir});
 			print $out "$cnt:\t$k\t$ex\n" or last;
 			push @{$g_result->{list}}, $_;
 			if ($cnt == $MAX) {
@@ -167,7 +184,7 @@ sub querySymbol # ($what, $out)
 			my $d = '';
 			my $ex = $_->[$IDX_EXTRA] || '';
 			if ($ENV{SYM_SVR}) {
-				$d = "\t" . $folders{$files{$_->[$IDX_FILE]}{dir}};
+				$d = "\t" . getFolderByIdx($files{$_->[$IDX_FILE]}{dir}, 1);
 			}
 			my $ln = $_->[$IDX_LINE];
 			push @{$g_result->{list}}, $_;
@@ -248,7 +265,18 @@ use IO::Socket::INET;
 			if ($arg) {
 				$EDITOR = $arg;
 			}
-			print "EDITOR=$EDITOR\n";
+			print "EDITOR $EDITOR\n";
+		}
+		elsif ($cmd eq 'dir') {
+			if ($arg) {
+				$REPLACE_DIR = $arg;
+				@REPLACE_DIR_PAT = ();
+				for my $eq (split(/;/, $REPLACE_DIR)) {
+					local @_ = split(/=/, $eq, 2);
+					push @REPLACE_DIR_PAT, \@_;
+				}
+			}
+			print "dir $REPLACE_DIR\n";
 		}
 		elsif ($cmd eq '?') {
 			print <<END;
@@ -262,6 +290,8 @@ max [num=25]
   set max displayed result
 editor [prog=vi]
   set default viewer for go.
+replace [old=new]
+  replace the real path from "old" to "new"
 ?
   show this help.
 q
