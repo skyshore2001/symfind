@@ -32,6 +32,7 @@ if ($f =~ /\.gz$/) {
 }
 open IN, $f or die "cannot open file $f\n";
 while (<IN>) {
+	next if /^!/o;
 	chomp;
 	my @a = split("\t");
 	if ($a[0] eq '') {
@@ -44,6 +45,9 @@ while (<IN>) {
 		}
 	}
 	else {
+		if ($a[$IDX_EXTRA] && length($a[$IDX_EXTRA]) > 300) {
+			print $a[$IDX_NAME], "=>",length($a[$IDX_EXTRA]), "\n";
+		}
 		push @symbols, \@a;
 	}
 }
@@ -160,7 +164,7 @@ sub querySymbol # ($what, $out)
 	}
 	$g_result = {type => 's', list => []};
 	for (@symbols) {
-		next if $pat_kind && $_->[$IDX_KIND] ne $pat_kind;
+		next if $pat_kind && substr($_->[$IDX_KIND],0,1) ne $pat_kind;
 		my $kind = $_->[$IDX_KIND];
 		my $key = $_->[$IDX_NAME];
 		my $ok = 1;
@@ -170,12 +174,16 @@ sub querySymbol # ($what, $out)
 				last;
 			}
 		}
-		if ($ok && ($kind eq 'd' || $kind eq 'v') && @pat_val) {
-			my $ex = $_->[$IDX_EXTRA];
-			for (@pat_val) {
-				if (!defined $ex || $ex !~ /$_/) {
-					$ok = 0;
-					last;
+		if ($ok && @pat_val) {
+			#$ok = ($kind eq 'd' || $kind eq 'v' || $kind eq 'm' || $kind eq 'e');
+			$ok = ($kind eq 'macro' || $kind eq 'variable');
+			if ($ok) {
+				my $ex = $_->[$IDX_EXTRA];
+				for (@pat_val) {
+					if (!defined $ex || $ex !~ /$_/) {
+						$ok = 0;
+						last;
+					}
 				}
 			}
 		}

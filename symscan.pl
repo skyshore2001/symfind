@@ -29,6 +29,7 @@ for (@PRJ) {
 }
 
 my %files; # elem: fullname -> idx
+my $symcnt = 0;
 
 $| = 1;
 print "=== scan files...\n";
@@ -36,79 +37,139 @@ open O, "| gzip > $outfile";
 my $lastdir = '';
 my $dir = ''; # $dir is for trans / to \ on MSWIN.
 my ($idxdir, $idxfile) = (0,0);
+
+my $lastSym;
+my ($IDX_NAME, $IDX_FILEIDX, $IDX_LINE, $IDX_KIND, $IDX_EXTRA) = (0..10);
+sub endWith # ($s, $pat)
+{
+	my ($len1, $len2) = (length($_[0]), length($_[1]));
+	return $len1 > $len2 && rindex($_[0], $_[1]) == $len1 - $len2;
+}
+
+sub printSym # ($sym)
+{
+	my ($sym) = @_;
+	unless (! defined($lastSym) || ($sym && $sym->[$IDX_LINE] eq $lastSym->[$IDX_LINE] && endWith($sym->[$IDX_NAME], $lastSym->[$IDX_NAME]))) {
+#		print O "$name\t$fileidx\t$line\t$kind\t$extra\n";
+		print O $lastSym->[$IDX_NAME], "\t", $lastSym->[$IDX_FILEIDX], "\t", $lastSym->[$IDX_LINE], "\t", $lastSym->[$IDX_KIND], "\t", $lastSym->[$IDX_EXTRA], "\n";
+		++ $symcnt;
+	}
+	$lastSym = $sym;
+}
+
+# e.g.
+# HELLO            macro         1 xx/hello.h       #define HELLO 100
+# operator +       function     24 /home/builder/test/test2/xx/hello.h InnerC & operator + (int n);
+# operator const RtecEventChannelAdmin::ConsumerQOS & prototype   187 /mnt/data/depot/BUSMB_B1/B1OD/20_DEV/c/9.01/sbo/Source/ThirdParty/LINUX/ACE/include/orbsvcs/Event_Utilities.h operator const RtecEventChannelAdmin::ConsumerQOS &(void);
+my $re = qr/^(\S+)   # name 
+			\s+(\S+) # type: function,macro,...
+			\s+(\d+) # line
+			\s+(\S+)  # file
+			\s+(.*)$/xo;
+my $re2 = qr/^(.*?)   # name 
+			\s+(function|prototype|method|property|anchor|enum\s+constant|class) # type: function,macro,...
+			\s+(\d+) # line
+			\s+(\S+)  # file
+			\s+(.*)$/xo;
+
+sub getSym # ($file, $fileidx)
+{
+	my ($file, $fileidx) = @_;
+
+#	open I, "ctags --c++-kinds=+px --languages=c,c++ --fields=+nS --excmd=pattern -u -R -f - " . join(' ', @PRJ) . " |";
+	open I, "ctags -x --c++-kinds=+px -u --extra=+q \"$file\" |";
+
+	while (<I>) {
+		unless (/$re/ || /$re2/) {
+			print "!!! unkonw line '$_'\n";
+# 			die;
+			next;
+		}
+		my ($name, $kind, $line, $file, $pat) = ($1, $2, $3, $4, $5);
+
+		# set extra
+		my $extra = '';
+		my $idx;
+		if ($kind eq 'function' || $kind eq 'method' || $kind eq 'prototype') {
+			$idx = index($pat, '(');
+			if ($idx > 0) {
+				$extra = substr($pat, $idx);
+			}
+			else {
+				$extra = $pat;
+			}
+		}
+		else {
+			$idx = index($pat, $name);
+			if ($idx > 0) {
+				$idx += length($name);
+				$extra = substr($pat, $idx);
+				if ($extra =~ /\w/o) {
+					$extra =~ s/^\s+//;
+				}
+				else {
+					$extra = '';
+				}
+			}
+		}
+
+		if ($extra) {
+			if (length($extra) > 100) {
+				$extra = substr($extra, 0, 100) . "...";
+			}
+			$extra =~ s/\t/ /g;
+		}
+		printSym([$name, $fileidx, $line, $kind, $extra]);
+	}
+	printSym(undef); # print lastone
+	close I;
+}
+
+print O "!FOLDER ", join(' ', @PRJ), "\n";
+print O "!LAST_UPDATE ", time(), "\n";
+
+my $extRE = $ENV{SYM_SCAN_EXT} || 'c;cpp;h;hpp;cc;mak;cs;java;s';
+
+if ($extRE) {
+	local $_ = $extRE;
+	print O "!EXTS $_\n";
+	s/;|,/|/g;
+	s/\s//g;
+	s/[|]$//;
+	$extRE = qr/\.($_)$/io;
+}
+
+sub mtime # ($file)
+{
+	my @a = stat($_[0]);
+	return $a[9];
+}
+
 find(sub {
 		if ($File::Find::dir ne $lastdir) {
 			$lastdir = $File::Find::dir;
 			++ $idxdir;
 			$dir = $lastdir;
 			$dir =~ s/\//\\/g if $IS_MSWIN;
-			print O "\td$idxdir\t$dir\n";
+			print O "\td$idxdir\t$dir\t", mtime($dir), "\n";
 		}
 		if (-f && !/\.(o|d)$/) {
 			++$idxfile;
-			print O "\tf$idxfile\t$_\td$idxdir\n";
-			$files{"$dir$sep$_"} = "f$idxfile";
+			print O "\tf$idxfile\t$_\td$idxdir\t", mtime($_), "\n";
+			my $f = "$dir$sep$_";
+			$files{$f} = "f$idxfile";
 
-			if ($idxfile % 1000 == 0) {
-				print "$idxfile files...\r";
+			if (!defined $extRE || /$extRE/) {
+				getSym($f, "f$idxfile");
+			}
+
+			if ($idxfile % 100 == 0) {
+				print "$idxfile files, $symcnt symbols...\r";
 			}
 		}
 	},
 	@PRJ
 );
-print "$idxfile files saved.\n";
-
-print "=== scan symbols\n";
-open I, "ctags --c++-kinds=+px --languages=c,c++ --fields=+nS --excmd=pattern -u -R -f - " . join(' ', @PRJ) . " |";
-
-my ($IDX_NAME, $IDX_PATH, $IDX_PAT, $IDX_KIND, $IDX_LINE, $IDX_LAST) = (0..10);
-# f,p:signature/class; v,d:PAT
-my $symcnt = 0;
-while (<I>) {
-	unless (/^([^\t]+)
-			\t([^\t]+)
-			\t\/\^(.*?)\s*\$?\/;"
-			\t(\w)\t
-			line:(\d+)
-			(?:\tclass:(\w+))?
-			(?:\tsignature:(.+))?
-			/x) {
-		print "!!! unkonw line $_\n";
-		die;
-		next;
-	}
-	my ($name, $file, $pat, $kind, $line, $cls, $sig) = ($1, $2, $3, $4, $5, $6, $7);
-	my $extra = '';
-	if ($kind eq 'f' || $kind eq 'p') {
-		if ($cls) {
-			$name = $cls . '::' . $name;
-		}
-		if ($sig) {
-			$extra = $sig;
-		}
-	}
-	elsif ($kind eq 'd') {
-		if ($pat =~ /define\s+\S+\s+(\w+)/) {
-			$extra = $1;
-		}
-	}
-	elsif ($kind eq 'v') {
-		if ($pat =~ /=\s*(.+?)\s*;/) {
-			$extra = $1;
-		}
-	}
-	if ($extra) {
-		$extra =~ s/\t/ /g;
-	}
-	$file = $files{$file};
-	print O "$name\t$file\t$line\t$kind\t$extra\n";
-
-	++ $symcnt;
-	if ($symcnt % 1000 == 0) {
-		print "$symcnt symbols...\r";
-	}
-}
-print "$symcnt symbols saved to repository $outfile.\n";
+print "$idxfile files, $symcnt symbols are saved to repository $outfile.\n";
 
 close O;
-close I;

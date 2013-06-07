@@ -44,7 +44,7 @@ func! s:openSymfind(exname)
 		call setline(3, s:help)
 		call s:setSyntax()
 	endif
-	inoremap <silent> <buffer> <cr> <c-o>:call SF_call()<cr>
+	inoremap <silent> <buffer> <cr> <c-o>:call SF_call('')<cr>
 	nnoremap <silent> <buffer> <cr> :call SF_go('')<cr>
 	nnoremap <silent> <buffer> <s-cr> :call SF_go(1)<cr>
 	nnoremap <silent> <buffer> s<cr> :call SF_go(1)<cr>
@@ -64,7 +64,13 @@ func! SF_setPreview(force)
 	vert res 40
 endf
 
-func! SF_call()
+func! SF_call(cmd)
+	if a:cmd != ''
+		call s:openSymfind('')
+		1
+		call setline(1, a:cmd)
+	endif
+
 	if line('.') > 2
 		call SF_go('')
 		return
@@ -102,8 +108,10 @@ func! SF_go(splitwnd)
 endf
 
 command! -nargs=? Symfind :call s:openSymfind(<q-args>)
+command! -nargs=? Symcall :call SF_call(<q-args>)
 " symfind
 nmap <leader>sf :Symfind<cr>
+nmap <leader>SF :Symcall s <c-r><c-w><cr>
 " find file
 " nmap <leader>ff :Symfind f<cr>
 " find symbol
