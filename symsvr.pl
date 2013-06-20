@@ -132,7 +132,7 @@ package main;
 sub runClient # ($cmds)
 {
 	my ($cmds) = @_;
-	my $comm = CommInet->new(isclient=> 1);
+	my $comm = CommInet->new(isclient=> 1) or die "*** cannot start client!";
 	$comm->put("$cmds\n");
 
 	my $line;

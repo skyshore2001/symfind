@@ -1,3 +1,14 @@
+BUGS:
+> on MSWIN32, stags cannot quit if break program by Ctrl-C.
+
+2013/06/20 15:52:02
+*) symsvr 2.0
+> support query values by "#xxx". Use stags for scanning. Performance improved.
+> new repo format supporting repo updating
+> repo add/update, multi-repo loading.
+> go next/previous command in symfind.pl.
+
+
 2013/05/17 13:17:37
 > NF201305.1 - dir replace
 v1.1

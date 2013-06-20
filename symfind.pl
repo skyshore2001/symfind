@@ -3,81 +3,55 @@
 use strict;
 use warnings;
 
-my %folders; # elem: $idx => $folder
-my %files; # elem: $idx => {name, dir}
-
-#@ARGV=qw/1.symbols/;
-#@ARGV=qw'd:/bat/b1_tags.key';
-
-if (@ARGV < 1) {
-	print "Usage: symfind [repo]\n";
-	exit;
-}
+###### config {{{
 my $MAX = 25;
 my $EDITOR = 'vi';
+#}}}
+
+###### global {{{
+my $IS_MSWIN = $^O eq 'MSWin32';
+my $sep = $IS_MSWIN? '\\': '/';
+
+my @REPOS; # elem: repo - {root, \@folders, \@files, \@symbols}
+# file: [name, folder, [repo] ]
+my ($IDX_NAME, $IDX_FOLDER, $IDX_REPO) = (0..10);
+# symbol: [name, line, kind, extra, fileobj]
+my ($IDX_LINE, $IDX_KIND, $IDX_EXTRA, $IDX_FILEOBJ) = (1..10);
+
 my $outputln = defined $ENV{SYM_SVR};
 
 my $REPLACE_DIR = '';
 my @REPLACE_DIR_PAT= ();
 
-my @symbols; # elem: [$NAME, $FILE, $LINE, $KIND $EXTRA]
-my ($IDX_NAME, $IDX_FILE, $IDX_LINE, $IDX_KIND, $IDX_EXTRA) = (0..10);
+my $g_lastidx;
+my $g_result; # {type=>[f|s], \@list}
+#}}}
 
-my $g_result; # {type=>[f|s], list}
-
-my $f = $ARGV[0];
-if ($f =~ /\.gz$/) {
-	#$f = "zcat $f |";
-	$f = "gzip -dc $f |";
-}
-open IN, $f or die "cannot open file $f\n";
-while (<IN>) {
-	next if /^!/o;
-	chomp;
-	my @a = split("\t");
-	if ($a[0] eq '') {
-		my $t = substr($a[1], 0, 1);
-		if ($t eq 'd') {
-			$folders{$a[1]} = $a[2];
-		}
-		elsif ($t eq 'f') {
-			$files{$a[1]} = {name => $a[2], dir => $a[3]};
-		}
-	}
-	else {
-		if ($a[$IDX_EXTRA] && length($a[$IDX_EXTRA]) > 300) {
-			print $a[$IDX_NAME], "=>",length($a[$IDX_EXTRA]), "\n";
-		}
-		push @symbols, \@a;
-	}
-}
-close IN;
-
-my @filelist = values(%files);
-print "load " . scalar(@filelist) . " files.\n";
-print "load " . scalar(@symbols) . " symbols.\n";
-
-sub getFolderByIdx # ($idx)
+###### functions {{{
+sub getFolder # ($fileobj)
 {
-	my ($idx) = @_;
-	my $d = $folders{$idx};
+	my ($fileobj) = @_;
+	my ($d, $r) = ($fileobj->[$IDX_FOLDER], $fileobj->[$IDX_REPO]{root});
 	if (@REPLACE_DIR_PAT >0) {
 		for (@REPLACE_DIR_PAT) {
-			$d =~ s/$_->[0]/$_->[1]/;
+			$r =~ s/$_->[0]/$_->[1]/;
 		}
 	}
-	return $d;
+	if ($d eq '.') {
+		$d = $r;
+	}
+	else {
+		$d =~ s/^\.[\\\/]//;
+		$d = $r . $sep . $d;
+	}
+	$d;
 }
 
 sub getFile # ($fileobj)
 {
 	my ($fileobj) = @_;
-	return  getFolderByIdx($fileobj->{dir}) . '/' . $fileobj->{name};
-}
-
-sub getFileByIdx # ($fileidx)
-{
-	return getFile($files{$_[0]});
+	my $d = getFolder($fileobj);
+	return  $d . $sep . $fileobj->[$IDX_NAME];
 }
 
 sub queryFile # ($what, $out)
@@ -105,36 +79,42 @@ sub queryFile # ($what, $out)
 		}
 	}
 	$g_result = {type => 'f', list => []};
-	for (@filelist) {
-		my $k = $_->{name};
-		my $ex;
-		my $ok = 1;
-		for (@pat1) {
-			if ($k !~ /$_/) {
-				$ok = 0;
-				last;
-			}
-		}
-		if ($ok) {
-			$ex = $folders{$_->{dir}};
-			for (@pat2) {
-				if ($ex !~ /$_/) {
+	$g_lastidx = -1;
+	for (@REPOS) {
+		my $repo = $_;
+		for (@{$repo->{files}}) {
+			my $name = $_->[$IDX_NAME];
+			my $d;
+			my $ok = 1;
+			for (@pat1) {
+				if ($name !~ /$_/) {
 					$ok = 0;
 					last;
 				}
 			}
-		}
-		if ($ok) {
-			++$cnt;
-			$ex = getFolderByIdx($_->{dir});
-			print $out "$cnt:\t$k\t$ex\n" or last;
-			push @{$g_result->{list}}, $_;
-			if ($cnt == $MAX) {
-				print $out "... (max $MAX)\n";
-				last;
+			if ($ok) {
+				$d = $_->[$IDX_FOLDER];
+				for (@pat2) {
+					if ($d !~ /$_/) {
+						$ok = 0;
+						last;
+					}
+				}
+			}
+			if ($ok) {
+				++$cnt;
+				$_->[$IDX_REPO] = $repo;
+				$d = getFolder($_);
+				print $out "$cnt:\t$name\t$d\n" or last;
+				push @{$g_result->{list}}, $_;
+				if ($cnt == $MAX) {
+					print $out "... (max $MAX)\n";
+					goto quit;
+				}
 			}
 		}
 	}
+quit:
 }
 
 sub querySymbol # ($what, $out)
@@ -163,70 +143,153 @@ sub querySymbol # ($what, $out)
 		}
 	}
 	$g_result = {type => 's', list => []};
-	for (@symbols) {
-		next if $pat_kind && substr($_->[$IDX_KIND],0,1) ne $pat_kind;
-		my $kind = $_->[$IDX_KIND];
-		my $key = $_->[$IDX_NAME];
-		my $ok = 1;
-		for (@pat_main) {
-			if ($key !~ /$_/) {
-				$ok = 0;
-				last;
+	$g_lastidx = -1;
+	for (@REPOS) {
+		my $repo = $_;
+		for (@{$repo->{symbols}}) {
+			next if $pat_kind && substr($_->[$IDX_KIND],0,1) ne $pat_kind;
+			my $kind = $_->[$IDX_KIND];
+			my $name = $_->[$IDX_NAME];
+			my $ok = 1;
+			for (@pat_main) {
+				if ($name !~ /$_/) {
+					$ok = 0;
+					last;
+				}
 			}
-		}
-		if ($ok && @pat_val) {
-			#$ok = ($kind eq 'd' || $kind eq 'v' || $kind eq 'm' || $kind eq 'e');
-			$ok = ($kind eq 'macro' || $kind eq 'variable');
-			if ($ok) {
-				my $ex = $_->[$IDX_EXTRA];
-				for (@pat_val) {
-					if (!defined $ex || $ex !~ /$_/) {
-						$ok = 0;
-						last;
+			if ($ok && @pat_val) {
+				#$ok = ($kind eq 'd' || $kind eq 'v' || $kind eq 'm' || $kind eq 'e');
+				$ok = ($kind eq 'macro' || $kind eq 'variable');
+				if ($ok) {
+					my $ex = $_->[$IDX_EXTRA];
+					for (@pat_val) {
+						if (!defined $ex || $ex !~ /$_/) {
+							$ok = 0;
+							last;
+						}
 					}
 				}
 			}
-		}
-		if ($ok) {
-			my $f = $files{$_->[$IDX_FILE]}{name};
-			my $d = '';
-			my $ex = $_->[$IDX_EXTRA] || '';
-			if ($ENV{SYM_SVR}) {
-				$d = "\t" . getFolderByIdx($files{$_->[$IDX_FILE]}{dir}, 1);
-			}
-			my $ln = $_->[$IDX_LINE];
-			push @{$g_result->{list}}, $_;
-			++ $cnt;
-			print $out "$cnt:\t$kind\t$key\t$ex\t$f:$ln$d\n" or last;
-			if ($cnt == $MAX) {
-				print $out "... (max $MAX)\n";
-				last;
+			if ($ok) {
+				my $fobj = $_->[$IDX_FILEOBJ];
+				$fobj->[$IDX_REPO] = $repo;
+				my $d = '';
+				my $ex = $_->[$IDX_EXTRA] || '';
+				my $f = $fobj->[$IDX_NAME];
+				if ($ENV{SYM_SVR}) {
+					$d = "\t" . getFolder($fobj);
+				}
+				my $ln = $_->[$IDX_LINE];
+				push @{$g_result->{list}}, $_;
+				++ $cnt;
+				print $out "$cnt:\t$kind\t$name\t$ex\t$f:$ln$d\n" or last;
+				if ($cnt == $MAX) {
+					print $out "... (max $MAX)\n";
+					goto quit;
+				}
 			}
 		}
 	}
+quit:
 }
 
-=pod
-use IO::Socket::INET;
-
-	my $sock = IO::Socket::INET->new (
-		#LocalAddr => '127.0.0.1',
-		LocalPort => 9999,
-		Reuse => 1,
-# 			ReuseAddr => 1,
-# 			ReusePort => 1,
-		Proto => 'tcp',
-		Listen => 1,
-	) or die "cannot open socket: $!";
-
-	print "listen on 9999\n";
-	while (my $ses = $sock->accept()) {
-		querySymbol($ses);
-		$ses->close();
+sub gotoResult # ($idx)
+{
+	return unless defined($g_result) && defined($g_lastidx);
+	my ($idx) = @_;
+	if ($idx eq 'n') {
+		$idx = $g_lastidx +1;
 	}
-=cut
+	elsif ($idx eq 'N') {
+		$idx = $g_lastidx -1;
+	}
+	return unless ($idx >= 0 && $idx < scalar(@{$g_result->{list}}));
 
-	$| = 1;
+	print "go ", $idx+1, "\n";
+	$g_lastidx = $idx;
+	my $rec = $g_result->{list}[$idx];
+	if ($g_result->{type} eq 'f') {
+		my $f = getFile($rec);
+		system($EDITOR . " \"$f\"");
+	}
+	elsif ($g_result->{type} eq 's') {
+		my $f = getFile($rec->[$IDX_FILEOBJ]);
+		system($EDITOR  . " +$rec->[$IDX_LINE] \"$f\"");
+	}
+}
+#}}}
+
+###### main routine {{{
+
+#@ARGV=qw/1.symbols/;
+#@ARGV=qw'd:/bat/b1_tags.key';
+
+$| = 1;
+if (@ARGV < 1) {
+	print "Usage: symfind.pl [repo-file(s)]\n";
+	exit;
+}
+
+for (@ARGV) {
+	-f or die "*** cannot open repo-file $_!\n";
+}
+
+#### load repo-files {{{
+my ($fcnt, $scnt) = (0,0);
+for (@ARGV) {
+	print "=== loading $_...\n";
+	my $f = "gzip -dc $_ |";
+
+	open IN, $f or die "cannot open file '$f'\n";
+	my $ismeta = 0;
+	my $repo;
+	my ($curdir, $curfobj);
+	while (<IN>) {
+		if (/^!/o) {
+			if (/^!ROOT\s+(.+)/) {
+				if (!$ismeta) {
+					$repo = {
+						root => $1,
+						folders => [],
+						files => [],
+						symbols => []
+					};
+					push @REPOS, $repo;
+				}
+			}
+			next;
+		}
+		chomp;
+		my @a = split("\t");
+		if ($a[0] eq '') {
+			my $t = substr($a[1], 0, 1);
+			if ($t eq 'd') {
+				$curdir = $a[2];
+				push @{$repo->{folders}}, $curdir; # name
+			}
+			elsif ($t eq 'f') {
+				$curfobj = [$a[2], $curdir]; # name, folder
+				push @{$repo->{files}}, $curfobj;
+				++ $fcnt;
+			}
+		}
+		else {
+			if ($a[$IDX_EXTRA] && length($a[$IDX_EXTRA]) > 300) {
+				print $a[$IDX_NAME], "=>",length($a[$IDX_EXTRA]), "\n";
+			}
+			$a[$IDX_FILEOBJ] = $curfobj;
+			push @{$repo->{symbols}}, \@a;
+			++ $scnt;
+		}
+	}
+	close IN;
+}
+
+	print "load $fcnt files.\n";
+	print "load $scnt symbols.\n";
+#}}}
+
+#### CUI {{{
 	print "(for symsvr)\n" if $outputln;
 	print "> ";
 	print "\n" if $outputln;
@@ -255,19 +318,15 @@ use IO::Socket::INET;
 			}
 			print "MAX=$MAX\n";
 		}
-		elsif ($cmd eq 'go' && !$ENV{SYM_SVR}) {
-			my $idx = $arg-1;
-			if ($g_result && $idx >= 0 && $idx < scalar($g_result->{list})) {
-				my $rec = $g_result->{list}[$idx];
-				if ($g_result->{type} eq 'f') {
-					my $f = getFile($rec);
-					system($EDITOR . " \"$f\"");
-				}
-				elsif ($g_result->{type} eq 's') {
-					my $f = getFileByIdx($rec->[$IDX_FILE]);
-					system($EDITOR  . " +$rec->[$IDX_LINE] \"$f\"");
-				}
+		elsif (!$ENV{SYM_SVR} && ($cmd eq 'go' || $cmd eq 'n' || $cmd eq 'N') ) {
+			my $idx;
+			if ($cmd eq 'go') {
+				$idx = (defined $arg)? $arg - 1: 1;
 			}
+			else {
+				$idx = $cmd;
+			}
+			gotoResult($idx);
 		}
 		elsif ($cmd eq 'editor') {
 			if ($arg) {
@@ -292,8 +351,10 @@ f {patterns}
   file search
 s {patterns}
   symbol search
-go {num}
+go [num=1]
   open the {num}th result 
+n/N
+  go next or previous
 max [num=25]
   set max displayed result
 editor [prog=vi]
@@ -319,3 +380,7 @@ nx:
 		print "> ";
 		print "\n" if $outputln;
 	}
+#}}}
+#}}}
+
+# vim: set foldmethod=marker :

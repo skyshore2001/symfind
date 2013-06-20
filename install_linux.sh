@@ -3,6 +3,6 @@
 BIN=/usr/local/bin
 VIMFILES=/usr/share/vim/site
 
-cp ./sym*.pl $BIN/
+cp ./symscan.pl ./symfind.pl ./symsvr.pl ./stags $BIN/
 cp ./symfind.vim $VIMFILES/plugin/
 
