@@ -9,6 +9,7 @@ my $DEF_PORT = 20000;
 my $INST_NO = 0;
 my $DEBUG = $ENV{DEBUG};
 my $IS_MSWIN = $^O eq 'MSWin32';
+my $SYMFIND = $ENV{SYMFIND} || 'symfind';
 
 ###### global
 my $g_tgtpid;
@@ -222,7 +223,7 @@ unless (-f $repo) {
 	pipe(MAIN_RD, TGT_WR);
 	pipe(TGT_RD, MAIN_WR);
 
-	my $cmd = "symfind.pl $repo";
+	my $cmd = "$SYMFIND $repo";
 
 	$g_tgtpid = fork;
 	if ($g_tgtpid == 0) {  # TGT

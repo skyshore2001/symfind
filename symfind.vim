@@ -98,11 +98,15 @@ func! SF_go(splitwnd)
 		return
 	endif
 	let f = ls[-1] . '/' . ls[-2]
+	if f =~ '\s'
+		" process space
+		let f = substitute(f, '\s', '\\\0', 'g')
+	endif
 	if a:splitwnd || b:preview
 		call SF_setPreview(0)
 		exe (winnr()+1) . 'wincmd w'
 	endif
-	let cmd = 'e ' . substitute(f, '\v(.+):(\d+)$', '+\2 \1', 0)
+	let cmd = 'e ' . substitute(f, '\v(.+):(\d+)$', '+\2 \1', '')
 "	call confirm(cmd)
 	exec cmd
 endf

@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use Time::HiRes;
 
 ###### config {{{
 my $MAX = 25;
@@ -18,7 +19,7 @@ my ($IDX_NAME, $IDX_FOLDER, $IDX_REPO) = (0..10);
 # symbol: [name, line, kind, extra, fileobj]
 my ($IDX_LINE, $IDX_KIND, $IDX_EXTRA, $IDX_FILEOBJ) = (1..10);
 
-my $outputln = defined $ENV{SYM_SVR};
+my $g_forsvr = defined $ENV{SYM_SVR};
 
 my $REPLACE_DIR = '';
 my @REPLACE_DIR_PAT= ();
@@ -176,7 +177,7 @@ sub querySymbol # ($what, $out)
 				my $d = '';
 				my $ex = $_->[$IDX_EXTRA] || '';
 				my $f = $fobj->[$IDX_NAME];
-				if ($ENV{SYM_SVR}) {
+				if ($g_forsvr) {
 					$d = "\t" . getFolder($fobj);
 				}
 				my $ln = $_->[$IDX_LINE];
@@ -236,6 +237,7 @@ for (@ARGV) {
 
 #### load repo-files {{{
 my ($fcnt, $scnt) = (0,0);
+my $T0 = Time::HiRes::time();
 for (@ARGV) {
 	print "=== loading $_...\n";
 	my $f = "gzip -dc $_ |";
@@ -256,9 +258,11 @@ for (@ARGV) {
 					};
 					push @REPOS, $repo;
 				}
+				$ismeta = 1;
 			}
 			next;
 		}
+		$ismeta = 0;
 		chomp;
 		my @a = split("\t");
 		if ($a[0] eq '') {
@@ -285,14 +289,13 @@ for (@ARGV) {
 	close IN;
 }
 
-	print "load $fcnt files.\n";
-	print "load $scnt symbols.\n";
+printf "load $fcnt files, $scnt symbols in %.3fs.\n", Time::HiRes::time()-$T0;
 #}}}
 
 #### CUI {{{
-	print "(for symsvr)\n" if $outputln;
+	print "(for symsvr)\n" if $g_forsvr;
 	print "> ";
-	print "\n" if $outputln;
+	print "\n" if $g_forsvr;
 	while (<STDIN>) {
 		chomp;
 		goto nx if $_ eq '';
@@ -318,7 +321,7 @@ for (@ARGV) {
 			}
 			print "MAX=$MAX\n";
 		}
-		elsif (!$ENV{SYM_SVR} && ($cmd eq 'go' || $cmd eq 'n' || $cmd eq 'N') ) {
+		elsif (!$g_forsvr && ($cmd eq 'go' || $cmd eq 'n' || $cmd eq 'N') ) {
 			my $idx;
 			if ($cmd eq 'go') {
 				$idx = (defined $arg)? $arg - 1: 1;
@@ -367,8 +370,8 @@ q
   quit
 
 -------- hint for pattern:
-end with ! - dont ignore case
 end with / - find file in dir
+begin with # - search symbol that value matches the pattern
 f|t|...  - find symbol of kind=f or t ...
 
 END
@@ -378,7 +381,7 @@ END
 		}
 nx:
 		print "> ";
-		print "\n" if $outputln;
+		print "\n" if $g_forsvr;
 	}
 #}}}
 #}}}
