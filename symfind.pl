@@ -240,9 +240,7 @@ for (@ARGV) {
 	my $repo;
 	my ($curdir, $curfobj);
 	while (<IN>) {
-#		s/\s+$//;
 		chop;
-		chop if /\r$/o;
  		if (/^!/o) 
  		{
 			if (/^!ROOT\s+(.+)/) {

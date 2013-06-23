@@ -316,6 +316,7 @@ for (@ARGV) {
 	if (!$fdopened)
 	{
 		open O, "| gzip > $outfile";
+		binmode O; # avoid "\r" on mswindows
 		$fdopened = 1;
 	}
 
