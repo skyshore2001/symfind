@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Time::HiRes;
+use Time::HiRes qw/time/;
 
 ###### config {{{
 my $MAX = 25;
@@ -21,8 +21,8 @@ my ($IDX_LINE, $IDX_KIND, $IDX_EXTRA, $IDX_FILEOBJ) = (1..10);
 
 my $g_forsvr = defined $ENV{SYM_SVR};
 
-my $REPLACE_DIR = '';
-my @REPLACE_DIR_PAT= ();
+my $REPLACE_ROOT = '';
+my @REPLACE_ROOT_PAT= ();
 
 my $g_lastidx;
 my $g_result; # {type=>[f|s], \@list}
@@ -33,8 +33,8 @@ sub getFolder # ($fileobj)
 {
 	my ($fileobj) = @_;
 	my ($d, $r) = ($fileobj->[$IDX_FOLDER], $fileobj->[$IDX_REPO]{root});
-	if (@REPLACE_DIR_PAT >0) {
-		for (@REPLACE_DIR_PAT) {
+	if (@REPLACE_ROOT_PAT >0) {
+		for (@REPLACE_ROOT_PAT) {
 			$r =~ s/$_->[0]/$_->[1]/;
 		}
 	}
@@ -59,24 +59,19 @@ sub queryFile # ($what, $out)
 {
 	my ($what, $out) = @_;
 	my $cnt = 0;
-	my @pat = split(/\s+/, $what);
-#	print "=== query: '", join(' ', @pat), "'\n" unless $ENV{SYM_SVR};
+#	print "=== query: '$what'\n" unless $ENV{SYM_SVR};
 
-	my @pat1;
-	my @pat2;
-	my $ic = 'i';
-	for (@pat) {
-		if (/[\/\\]$/) {
+	my @pats;
+	my @pats_dir;
+	my $ic;
+	for (split(/\s+/, $what)) {
+		$ic = /[A-Z]/? 0: 1;
+		if (/[\/\\]$/o) {
 			chop;
-			push @pat2, qr/$_/i;
+			push @pats_dir, $ic? qr/$_/i : qr/$_/;
 		}
 		else{
-			if (s/!$//) {
-				push @pat1, qr/$_/;
-			}
-			else {
-				push @pat1, qr/$_/i;
-			}
+			push @pats, $ic? qr/$_/i: qr/$_/;
 		}
 	}
 	$g_result = {type => 'f', list => []};
@@ -87,7 +82,7 @@ sub queryFile # ($what, $out)
 			my $name = $_->[$IDX_NAME];
 			my $d;
 			my $ok = 1;
-			for (@pat1) {
+			for (@pats) {
 				if ($name !~ /$_/) {
 					$ok = 0;
 					last;
@@ -95,7 +90,7 @@ sub queryFile # ($what, $out)
 			}
 			if ($ok) {
 				$d = $_->[$IDX_FOLDER];
-				for (@pat2) {
+				for (@pats_dir) {
 					if ($d !~ /$_/) {
 						$ok = 0;
 						last;
@@ -122,48 +117,46 @@ sub querySymbol # ($what, $out)
 {
 	my ($what, $out) = @_;
 	my $cnt = 0;
-	my @pat = split(/\s+/, $what);
-#	print "=== query: '", join(' ', @pat), "'\n" unless $ENV{SYM_SVR};
-	my @pat_main;
-	my @pat_val;
-	my $pat_kind;
-	for (@pat) {
-		if (/^#(.*)$/) {
-			push @pat_val, qr/$1/i;
+#	print "=== query: '$what'\n" unless $ENV{SYM_SVR};
+	my @pats;
+	my @pats_val;
+	my $pat_kind = '';
+	my $ic;
+	for (split(/\s+/, $what)) {
+		if (/^([a-z])$/) {
+			$pat_kind .= $1;
+			next;
 		}
-		elsif (/^([a-z])$/) {
-			$pat_kind = $1;
+		$ic = /[A-Z]/? 0: 1;
+		if (/^#(.*)$/) {
+			push @pats_val, $ic? qr/$1/i: qr/$1/;
 		}
 		else{
-			if (s/!$//) {
-				push @pat_main, qr/$_/;
-			}
-			else {
-				push @pat_main, qr/$_/i;
-			}
+			push @pats, $ic? qr/$_/i: qr/$_/;
 		}
 	}
 	$g_result = {type => 's', list => []};
 	$g_lastidx = -1;
+	my $kindlen = length($pat_kind);
 	for (@REPOS) {
 		my $repo = $_;
 		for (@{$repo->{symbols}}) {
-			next if $pat_kind && substr($_->[$IDX_KIND],0,1) ne $pat_kind;
+			next if $pat_kind && substr($_->[$IDX_KIND],0,$kindlen) ne $pat_kind;
 			my $kind = $_->[$IDX_KIND];
 			my $name = $_->[$IDX_NAME];
 			my $ok = 1;
-			for (@pat_main) {
+			for (@pats) {
 				if ($name !~ /$_/) {
 					$ok = 0;
 					last;
 				}
 			}
-			if ($ok && @pat_val) {
+			if ($ok && @pats_val) {
 				#$ok = ($kind eq 'd' || $kind eq 'v' || $kind eq 'm' || $kind eq 'e');
 				$ok = ($kind eq 'macro' || $kind eq 'variable');
 				if ($ok) {
 					my $ex = $_->[$IDX_EXTRA];
-					for (@pat_val) {
+					for (@pats_val) {
 						if (!defined $ex || $ex !~ /$_/) {
 							$ok = 0;
 							last;
@@ -237,7 +230,7 @@ for (@ARGV) {
 
 #### load repo-files {{{
 my ($fcnt, $scnt) = (0,0);
-my $T0 = Time::HiRes::time();
+my $T0 = time();
 for (@ARGV) {
 	print "=== loading $_...\n";
 	my $f = "gzip -dc $_ |";
@@ -247,7 +240,11 @@ for (@ARGV) {
 	my $repo;
 	my ($curdir, $curfobj);
 	while (<IN>) {
-		if (/^!/o) {
+#		s/\s+$//;
+		chop;
+		chop if /\r$/o;
+ 		if (/^!/o) 
+ 		{
 			if (/^!ROOT\s+(.+)/) {
 				if (!$ismeta) {
 					$repo = {
@@ -261,27 +258,26 @@ for (@ARGV) {
 				$ismeta = 1;
 			}
 			next;
-		}
+ 		}
 		$ismeta = 0;
-		chomp;
-		my @a = split("\t");
-		if ($a[0] eq '') {
-			my $t = substr($a[1], 0, 1);
+		if (/^\t(\w)\t(\S+)/o) {
+			my ($t, $name) = ($1, $2);
 			if ($t eq 'd') {
-				$curdir = $a[2];
-				push @{$repo->{folders}}, $curdir; # name
+				$curdir = $name;
+				push @{$repo->{folders}}, $name;
 			}
 			elsif ($t eq 'f') {
-				$curfobj = [$a[2], $curdir]; # name, folder
+				$curfobj = [$name, $curdir]; # name, folder
 				push @{$repo->{files}}, $curfobj;
 				++ $fcnt;
 			}
 		}
 		else {
-			if ($a[$IDX_EXTRA] && length($a[$IDX_EXTRA]) > 300) {
-				print $a[$IDX_NAME], "=>",length($a[$IDX_EXTRA]), "\n";
-			}
-			$a[$IDX_FILEOBJ] = $curfobj;
+ 			my @a = split("\t", $_);
+# 			if ($a[$IDX_EXTRA] && length($a[$IDX_EXTRA]) > 300) {
+# 				print $a[$IDX_NAME], "=>",length($a[$IDX_EXTRA]), "\n";
+# 			}
+  			$a[$IDX_FILEOBJ] = $curfobj;
 			push @{$repo->{symbols}}, \@a;
 			++ $scnt;
 		}
@@ -289,7 +285,7 @@ for (@ARGV) {
 	close IN;
 }
 
-printf "load $fcnt files, $scnt symbols in %.3fs.\n", Time::HiRes::time()-$T0;
+printf "load $fcnt files, $scnt symbols in %.3fs.\n", time()-$T0;
 #}}}
 
 #### CUI {{{
@@ -302,10 +298,14 @@ printf "load $fcnt files, $scnt symbols in %.3fs.\n", Time::HiRes::time()-$T0;
 		my ($cmd, $arg) = split(/\s+/, $_, 2);
 		$arg = '' unless defined $arg;
 		if ($cmd eq 'f') {
+			my $t0 = time();
 			queryFile($arg, \*STDOUT);
+			printf "(Total %d result(s) in %.3fs.)\n", scalar(@{$g_result->{list}}), time()-$t0;
 		}
 		elsif ($cmd eq 's') {
+			my $t0 = time();
 			querySymbol($arg, \*STDOUT);
+			printf "(Total %d result(s) in %.3fs.)\n", scalar(@{$g_result->{list}}), time()-$t0;
 		}
 		elsif ($cmd eq 'q') {
 			print "=== quit.\n";
@@ -335,18 +335,18 @@ printf "load $fcnt files, $scnt symbols in %.3fs.\n", Time::HiRes::time()-$T0;
 			if ($arg) {
 				$EDITOR = $arg;
 			}
-			print "EDITOR $EDITOR\n";
+			print "editor $EDITOR\n";
 		}
 		elsif ($cmd eq 'dir') {
 			if ($arg) {
-				$REPLACE_DIR = $arg;
-				@REPLACE_DIR_PAT = ();
-				for my $eq (split(/;/, $REPLACE_DIR)) {
+				$REPLACE_ROOT = $arg;
+				@REPLACE_ROOT_PAT = ();
+				for my $eq (split(/;/, $REPLACE_ROOT)) {
 					local @_ = split(/=/, $eq, 2);
-					push @REPLACE_DIR_PAT, \@_;
+					push @REPLACE_ROOT_PAT, \@_;
 				}
 			}
-			print "dir $REPLACE_DIR\n";
+			print "root $REPLACE_ROOT\n";
 		}
 		elsif ($cmd eq '?') {
 			print <<END;

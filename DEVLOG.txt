@@ -1,11 +1,17 @@
 BUGS:
 > on MSWIN32, stags cannot quit if break program by Ctrl-C.
 
+2013/06/23 09:17:05 
+*) NEW
+> C++ version of symfind
+> support more than 1 kind letter filter.
+> support case-sensitive search by captain letter in the pattern word.
+
 2013/06/20 15:52:02
-*) symsvr 2.0
-> support query values by "#xxx". Use stags for scanning. Performance improved.
+*) version 2.0 init
 > new repo format supporting repo updating
 > repo add/update, multi-repo loading.
+> support query values by "#xxx". Use stags for scanning. Performance improved.
 > go next/previous command in symfind.pl.
 
 

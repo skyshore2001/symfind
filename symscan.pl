@@ -90,7 +90,7 @@ my $re = qr/^([^\t]+)   # name
 			\t([^\t]+) # type: function,macro,...
 			\t(\d+) # line
 			\t([^\t]+) # file
-			\t(.*?)\s*$/xo;
+			\t(.*?)\s*$/x;
 
 my $ctag_out;
 sub getSym # ($file)
@@ -117,8 +117,8 @@ sub getSym # ($file)
 
 	while (<I>) {
 		last unless /\S/;
-		unless (/$re/) {
-			print "!!! unknown line '$_'\n";
+		unless (/$re/o) {
+			print "!!! unknown line '$_'.\n";
 # 			die;
 			next;
 		}
@@ -325,8 +325,8 @@ for (@ARGV) {
 		next if exists $scanedRoot{$root};
 		$scanedRoot{$root} = 1;
 
-		print O "!REPO_VER ", ($_->{meta}{REPO_VER} || $REPO_VER), "\n";
 		print O "!ROOT $root\n";
+		print O "!REPO_VER ", ($_->{meta}{REPO_VER} || $REPO_VER), "\n";
 		print O "!LAST_UPDATE ", time(), "\n";
 		print O "!TAGSCAN_PAT ", $TAGSCAN_PAT, "\n";
 		print O "!IGNORE_PAT ", $IGNORE_PAT, "\n";

@@ -3,11 +3,11 @@
 	    Symfind - Locate finds and symbols for large project
 		    Liang, Jian - 2013/5
 
-|1| Introduction					|sf-intro|
+|1| Introduction						|sf-intro|
 |2| Install						|sf-install|
 |3| Quick Start						|:Symfind|
-|4| Using Symfind					|sf-using|
-	|4.1| Repository				|sf-repo|
+|4| Using Symfind						|sf-using|
+	|4.1| Repository					|sf-repo|
 	|4.2| Query syntax				|sf-query|
 	|4.3| Options					|sf-options|
 |5| Contact me						|sf-contact|
@@ -72,6 +72,13 @@ with Symfind. You can find source code here: <TODO>
 ==============================================================================
 *3*  Quick Start 						*:Symfind*
 
+Key tools: >
+	symscan.pl (code scanner, generates repo-file)
+	symfind (search engine, command-line interface)
+	symsvr.pl (search engine server, TCP/IP interface, a wrapper of symfind)
+	symfind.vim (the vim plugin)
+	stags, gzip (the required program, must copy to the binary path)
+
 First, scan your project using symscan.pl. >
 	$ symscan.pl $SBO_BASE/Source -o b1
 
@@ -81,16 +88,17 @@ repository is named 1.repo.gz.
 To update the repository: >
 	$ symscan.pl b1.gz
 
-After the repo is ready, you can run symfind.pl or symsvr.pl.  >
-	$ symfind.pl b1.gz
+After the repo is ready, you can run symfind or symsvr.pl.  >
+	$ symfind b1.gz
 
 It's the command-line interface: >
 	> ?
 	(show command help)
 	> f string cpp
-	(find file name that has "string" and "cpp", case-insensitive)
-	> s sbo string
-	(find symbol name that has "sbo" and "string", case-insensitive)
+	(find file name that has "string" and "cpp", case-insensitive search)
+	> s Sbo string
+	(find symbol name that has "Sbo" - match case as there's upper letter,
+	 and contains "string" - ignore case as there's no upper letter.)
 	> go 2
 	(go to the 2nd location in the result list, by default open file using vi)
 	> n
@@ -128,14 +136,29 @@ To update the repo-file actually re-scan the original 2 folders: >
 To update and add new folder to the repository: >
 	$ symscan.pl 1.repo.gz /home/data/dir3
 
-*4.2* Query syntax						*sf-query*
-Query by words seperated by space: >
-	> s foo bar
-	(symbols contain "foo" and "bar", case-insensitive)
+Pattern for scanning file~
+2 variables are available for you to customize the scanning.
+IGNORE_PAT 
+	(default value = '*.o;*.obj;*.d;.*')
+	Don't record such files into repo.
+TAGSCAN_PAT 
+	(default value = '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s')
+	Scan such files for symbols.
 
-Regular expression is suppported: >
-	> f ^sbo .cpp$
-	(files start with "sbo" and end with "cpp")
+(TODO: set envvar to customize)
+
+
+*4.2* Query syntax						*sf-query*
+Query by words seperated by space; Word that contains captain letter performs 
+case-sensitive search, or else case-insensitive: >
+	> s foo Bar
+	(symbols contain "foo" (case-insensitive) and "Bar" (case-sensitive))
+
+Start-with/end-with is suppported by "^" and "$" (like regexp): >
+	> f ^Sbo .cpp$
+	(files start with "Sbo" and end with ".cpp")
+(Perl version *symfind.pl* uses perl-style Regexp. Thus, "." is a magic char in
+ Regexp, you should use "\.cpp$" instead.)
 
 Search in folder: xxx/ ~
 For files, pattern that ends with "/" means search folder name: >
@@ -147,9 +170,16 @@ For symbols, the result lists symbol names and kinds. To filter the result by
 kind, use the first character of the kind name, e.g. "c" for "class": >
 	> s string
 	(list symbols match "string", there are kinds of "prototype", "class",
-	or "function")
+	 "function", "macro" and "member")
 	> s string c
 	(just find "class")
+If it cannot filter kinds with the first-char, use the 2nd (or 3rd...): >
+	> s string m
+	(find "member" or "macro")
+	> s string m e
+	(find "member" - match 2 chars of kind)
+	> s string m e m
+	(find "member")
 
 Search symbol value: #xxx ~
 For symbols, pattern that starts with "#" means search in values. E.g. you get
@@ -159,6 +189,17 @@ a error code -5002 and want to see if some macro is defined by this value: >
 You can composite all the features. e.g. >
 	> s ^dbm #-5002 m
 	(start with "dbm", value contains "-5002" and is a "macro")
+
+2-choices: symfind and symfind.pl ~
+They have almost the same functions. *symfind* is recommended as it's re-written 
+using C++ with speed and memory optimization.
+e.g. load 65322 files, 2022655 symbols (19M repo-file): symfind.pl uses 8.1s 
+and 1.1G memory; symfind uses 0.6s and 180M memory.  For a full symbols search 
+with 2 words (e.g. "hello world"), symfind.pl costs 2.8s, and symfind costs 0.4s.
+
+Note: by default symsvr.pl uses symfind for the search engine. To use
+symfind.pl, set envvar SYMFIND, e.g. (on Linux) >
+	$ SYMFIND=symfind.pl symsvr.pl 1.repo.gz
 
 *4.3* Options 							*sf-options*
 
