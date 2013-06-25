@@ -66,9 +66,9 @@ just copy files to your folder.
 
 On Linux, modify path in script install_linux and run it. 
 
-stags (for Linux) and stags.exe (for Windows) is attached. It's used by
+stags (for Linux) and stags.exe (for Windows) is included. It's used by
 symscan.pl. stags is a branch of ctags with slight change that works better
-with Symfind. You can find source code here: <TODO>
+with Symfind. You can find source code of stags in symfind source package.
 
 ==============================================================================
 *3*  Quick Start 						*:Symfind*
