@@ -420,10 +420,11 @@ SfSymbol *NewSymbol(char *buf)
 	char *p1 = p + sizeof(SfSymbol);
 	strcpy(p1, buf);
 
-	sym->nameoff = strtok_offset(p1, "\t", p1);
-	sym->lineoff = strtok_offset(NULL, "\t", p1);
-	sym->kindoff = strtok_offset(NULL, "\t", p1);
-	sym->extraoff = strtok_offset(NULL, "\t\r\n", p1);
+	const char *sep = "\t\r\n";
+	sym->nameoff = strtok_offset(p1, sep, p1);
+	sym->lineoff = strtok_offset(NULL, sep, p1);
+	sym->kindoff = strtok_offset(NULL, sep, p1);
+	sym->extraoff = strtok_offset(NULL, sep, p1);
 	return sym;
 }
 

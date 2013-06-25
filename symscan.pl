@@ -80,18 +80,6 @@ sub getAbsPath # ($path)
 	$_;
 }
 
-#my ($IDX_NAME, $IDX_FILEIDX, $IDX_LINE, $IDX_KIND, $IDX_EXTRA) = (0..10);
-
-# e.g.
-# HELLO            macro         1 xx/hello.h       #define HELLO 100
-# operator +       function     24 /home/builder/test/test2/xx/hello.h InnerC & operator + (int n);
-# operator const RtecEventChannelAdmin::ConsumerQOS & prototype   187 /mnt/data/depot/BUSMB_B1/B1OD/20_DEV/c/9.01/sbo/Source/ThirdParty/LINUX/ACE/include/orbsvcs/Event_Utilities.h operator const RtecEventChannelAdmin::ConsumerQOS &(void);
-my $re = qr/^([^\t]+)   # name 
-			\t([^\t]+) # type: function,macro,...
-			\t(\d+) # line
-			\t([^\t]+) # file
-			\t(.*?)\s*$/x;
-
 my $ctag_out;
 sub getSym # ($file)
 {
@@ -104,7 +92,9 @@ sub getSym # ($file)
 		$CTAGS .= '.exe' if $IS_MSWIN;
 		die "*** $CTAGS does not exist or cannot run!" unless -f $CTAGS;
 		print "=== use ctags: $CTAGS\n" if $ENV{DEBUG};
-		open2(\*I, $ctag_out, "\"$CTAGS\" -x --c++-kinds=+px -u --filter=yes --filter-terminator=") or die "fail to open stags!\n";
+		# --format=99: my own format
+		# -u: don't sorting
+		open2(\*I, $ctag_out, "\"$CTAGS\" -x --format=99 --c++-kinds=+px -u --filter=yes --filter-terminator=") or die "fail to open stags!\n";
 	}
 	if (!defined $file) {
 		print $ctag_out ".\n";
@@ -116,47 +106,10 @@ sub getSym # ($file)
 	print $ctag_out "$file\n";
 
 	while (<I>) {
-		last unless /\S/;
-		unless (/$re/o) {
-			print "!!! unknown line '$_'.\n";
-# 			die;
-			next;
-		}
-		my ($name, $kind, $line, $file, $pat) = ($1, $2, $3, $4, $5);
-
-		# set extra
-		my $extra = '';
-		my $idx;
-		if ($kind eq 'function' || $kind eq 'method' || $kind eq 'prototype') {
-			$idx = index($pat, '(');
-			if ($idx > 0) {
-				$extra = substr($pat, $idx);
-			}
-			else {
-				$extra = $pat;
-			}
-		}
-		else {
-			$idx = index($pat, $name);
-			if ($idx > 0) {
-				$idx += length($name);
-				$extra = substr($pat, $idx);
-				if ($extra =~ /\w/o) {
-					$extra =~ s/^\s+//;
-				}
-				else {
-					$extra = '';
-				}
-			}
-		}
-
-		if ($extra) {
-			if (length($extra) > 100) {
-				$extra = substr($extra, 0, 100) . "...";
-			}
-			$extra =~ s/\t/ /g;
-		}
-		print O "$name\t$line\t$kind\t$extra\n"; 
+		chop; # remvoe "\n"
+		chop if /\s$/o; # remove "\r"
+		last unless /\S/o;
+		print O $_, "\n";
 		++ $cnt;
 	}
 	return $cnt;
@@ -364,13 +317,13 @@ for (@ARGV) {
 			},
 		}, '.');
 
+		my $t = Time::HiRes::time()-$T0;
 		if (! $forUpdate) {
-			print "$filecnt files, $symcnt symbols are saved to repository $outfile.\n";
+			printf "$filecnt files, $symcnt symbols are saved to repository $outfile in %.3lfs.\n", $t;
 		}
 		else {
-			print "$filecnt files ($updFilecnt updates with $symcnt symbols) in repository $outfile\n";
+			printf "$filecnt files ($updFilecnt updates with $symcnt symbols) in repository $outfile in %.3lfs.\n", $t;
 		}
-		printf "(%.2lf seconds cost.)\n", Time::HiRes::time()-$T0;
 	}
 }
 chdir $CWD;

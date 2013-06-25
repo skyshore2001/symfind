@@ -1,13 +1,9 @@
 BUGS:
 > on MSWIN32, stags cannot quit if break program by Ctrl-C.
 
-TODO:
-> on win32, symscan.pl output unix format text file ("\n", not "\r\n")
-> symscan.pl and stags works better:
-	stags instead of symscan.pl. 
-	- output prototype
-	- process macro/variable and function 
-	- max length
+2013/06/25 10:42:03
+> NEW
+symscan.pl and stags work together better: stags process function prototype and macro/variable definition directly with maxlength=120.
 
 2013/06/23 09:17:05 
 *) NEW
