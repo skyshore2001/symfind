@@ -6,11 +6,12 @@
 |1| Introduction						|sf-intro|
 |2| Install						|sf-install|
 |3| Quick Start						|:Symfind|
-|4| Using Symfind						|sf-using|
+|4| Use Symfind						|sf-using|
 	|4.1| Repository					|sf-repo|
 	|4.2| Query syntax				|sf-query|
 	|4.3| Options					|sf-options|
-|5| Contact me						|sf-contact|
+|5| Use Symsvr and vim plugin				|sf-symsvr|
+|6| Contact me						|sf-contact|
 
 ==============================================================================
 *1* Introduction						*sf-intro*
@@ -119,8 +120,13 @@ OR >
 Now input command in the Symfind window, and go to the result by press <Enter>
 or double-click.
 
+As |<c-]>| and |gf| are default vim shortcut for locate a symbol (tag) and file,
+now I add the <leader> char in front of them for search in symfind: >
+	\<c-]>  - search symbol in symfind
+	\gf     - search file in symfind
+
 ==============================================================================
-*4*  Using Symfind							*sf-using*
+*4*  Use Symfind							*sf-using*
 
 *4.1* Symfind Repository file (repo-file) 				*sf-repo*
 
@@ -147,7 +153,7 @@ TAGSCAN_PAT
 
 (TODO: set envvar to customize)
 
-
+==============================================================================
 *4.2* Query syntax						*sf-query*
 Query by words seperated by space; Word that contains captain letter performs 
 case-sensitive search, or else case-insensitive: >
@@ -201,6 +207,7 @@ Note: by default symsvr.pl uses symfind for the search engine. To use
 symfind.pl, set envvar SYMFIND, e.g. (on Linux) >
 	$ SYMFIND=symfind.pl symsvr.pl 1.repo.gz
 
+==============================================================================
 *4.3* Options 							*sf-options*
 
 Change max result items~
@@ -228,7 +235,37 @@ OR simply >
 The result folder name will be checked and replaced if neccessary.
 
 ==============================================================================
-*5* Contact me						*sf-contact*
+*5* Use Symsvr and vim plugin					*sf-symsvr*
+
+*symsvr.pl* is a program that enables symfind to be a symbol server. By
+default, it use TCP port 20000 - instance 0 (port=instance_no+20000). If you
+want to use another instance/port: >
+	$ symsvr.pl 1.repo.gz &
+	  (TCP/20000)
+	$ symsvr.pl 2.repo.gz :1 &
+	  (TCP/20001)
+
+The vim plugin~
+After the server starts, you can start vim to search. Use :Symfind command to 
+open the search window. >
+	:Symfind
+or use the default mapped shortcut: >
+	\sf
+
+If you use instance 1, the command is like this: >
+	:Symfind :1
+or >
+	\1sf
+
+Symsvr as a client~
+For test, you can directly search in shell by "symsvr.pl -c": >
+	$ symsvr.pl -c "f sbo string"
+	  (find file)
+	$ symsvr.pl -c "s hello world" :1
+	  (find symbol using instance 1 - port 20001)
+
+==============================================================================
+*6* Contact me						*sf-contact*
 
 Liang, Jian - skyshore@gmail.com
 

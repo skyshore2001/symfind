@@ -1,6 +1,7 @@
 let s:bufname = '__SYMFIND__'
 let s:sp = "------------------------------------------"
 let s:help = ['f xxx - find file xxx', 's xxx - find symbol xxx']
+let s:exname = ''
 
 "===== toolkit {{{
 let s:match = []
@@ -12,7 +13,10 @@ endf
 
 func! s:openSymfind(exname)
 	let instno = 0
-	let bufname = s:bufname . a:exname
+	if a:exname != ''
+		let s:exname = a:exname
+	endif
+	let bufname = s:bufname . s:exname
 	let defcmd = 'f'
 	if s:mymatch(a:exname, '\v:(\d+)$')
 		let instno = s:match[1] +0
@@ -112,10 +116,13 @@ func! SF_go(splitwnd)
 endf
 
 command! -nargs=? Symfind :call s:openSymfind(<q-args>)
-command! -nargs=? Symcall :call SF_call(<q-args>)
 " symfind
 nmap <leader>sf :Symfind<cr>
-nmap <leader>SF :Symcall s <c-r><c-w><cr>
+nmap <leader>1sf :Symfind :1<cr>
+nmap <leader><c-]> :exe "call SF_call('s <c-r><c-w>')"<cr>
+vmap <leader><c-]> y:exe "call SF_call('s <c-r>0')"<cr>
+nmap <leader>gf :exe "call SF_call('f <c-r><c-f>')"<cr>
+vmap <leader>gf y:exe "call SF_call('f <c-r>0')"<cr>
 " find file
 " nmap <leader>ff :Symfind f<cr>
 " find symbol
