@@ -1,4 +1,4 @@
-VER=2.0
+VER=2.1
 CXX=g++
 
 #CXXFLAGS=-g -std=c++0x
@@ -37,7 +37,7 @@ all: $(Bin)
 
 # method 1. make rel on Linux
 # method 2. make on mingw, make on Linux, make rel on mingw or Linux
-rel: all $(RelPack) 
+dist: all $(RelPack) 
 
 $(RelPack): $(addprefix $(RelDir)/,$(RelFiles))
 	tar zcf $(RelDir).tgz $(RelDir)

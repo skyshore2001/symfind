@@ -132,15 +132,18 @@ now I add the <leader> char in front of them for search in symfind: >
 
 A repo-file (e.g. 1.repo.gz) is a text file compressed using gzip. It contains
 one or more repository. Each repository is for one folder. e.g. >
-	$ symscan.pl /home/data/dir1 /home/data/dir2
-The generated repo-file actually contains 2 repos respectively for the 2
-folders.
+	$ symscan.pl /home/data/dir1 /home/data/dir2 -o 1.repo
+The generated repo-file (1.repo.gz) actually contains 2 repos respectively 
+for the 2 folders.
 
 To update the repo-file actually re-scan the original 2 folders: >
 	$ symscan.pl 1.repo.gz
 
 To update and add new folder to the repository: >
 	$ symscan.pl 1.repo.gz /home/data/dir3
+
+*Note*
+you can rename the output repo-file. But don't remove the extension name ".gz".
 
 Pattern for scanning file~
 2 variables are available for you to customize the scanning.
@@ -152,6 +155,15 @@ TAGSCAN_PAT
 	Scan such files for symbols.
 
 (TODO: set envvar to customize)
+
+Load and use multiple repo-files ~
+symfind simply supports more than 1 repositories: >
+	$ symfind 1.repo.gz 2.repo.gz 3.repo.gz
+or use "add" command of symfind: >
+	$ symfind 1.repo.gz
+	(now enter symfind command-line interface)
+	> add 2.repo.gz 3.repo.gz
+	(add 1 or more repo-files)
 
 ==============================================================================
 *4.2* Query syntax						*sf-query*

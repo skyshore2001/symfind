@@ -189,7 +189,8 @@ e.g.
 	exit;
 }
 
-my $param;
+my $params = '';
+my @argv;
 for (@ARGV) {
 	if (/^:(\d+)/) {
 		my $p = $1 +0;
@@ -204,26 +205,29 @@ for (@ARGV) {
 		$g_isclient = 1;
 	}
 	else {
-		$param = $_;
+		$params .= $_ . ' ';
+		push @argv, $_;
 	}
 }
+chop $params if $params;
 
 if ($g_isclient) {
-	runClient($param || '');
+	runClient($params);
 	exit;
 }
 
-my $repo = $param || '1.repo.gz';
-unless (-f $repo) {
-	print "*** cannot find repo file '$repo'\n";
-	exit;
+for my $repo (@argv) {
+	unless (-f $repo) {
+		print "*** cannot find repo file '$repo'\n";
+		exit;
+	}
 }
 #}}}
 
 	pipe(MAIN_RD, TGT_WR);
 	pipe(TGT_RD, MAIN_WR);
 
-	my $cmd = "$SYMFIND $repo";
+	my $cmd = "$SYMFIND $params";
 
 	$g_tgtpid = fork;
 	if ($g_tgtpid == 0) {  # TGT
@@ -258,6 +262,7 @@ unless (-f $repo) {
 	my $comm = CommInet->new();
 	execCmd(undef, undef); # just process init output
 	msg ("=== server is ready.\n", 1);
+	exit if !$IS_MSWIN && fork != 0;
 	while(1)
 	{
 		local $_ = $comm->get() || '';
