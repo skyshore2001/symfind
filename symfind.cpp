@@ -122,155 +122,7 @@ struct SfRepo
 // }}}
 
 // ==== iteratoers {{{
-struct SfRepoIter
-{
-	SfRepoIter(SfRepo *repo) {
-		m_repo = repo;
-		m_value = NULL;
-	}
-	SfRepo *Next() {
-		if (m_repo == NULL)
-			return NULL;
-		m_value = m_repo;
-		m_repo = m_repo->next;
-		return m_value;
-	}
-	SfRepo *Value() const { return m_value; }
-
-	void Get(SfRepo* &repo) const {
-		repo = m_value;
-	}
-private:
-	SfRepo *m_repo, *m_value;
-};
-
-struct SfFolderIter
-{
-	SfFolderIter(SfRepo *repo): m_itRepo(repo) {
-		m_folder = NextLink();
-		m_value = NULL;
-	}
-	SfFolder *Next() {
-		if (m_folder == NULL)
-			return NULL;
-		m_value = m_folder;
-		m_folder = m_folder->next;
-		if (m_folder == NULL)
-			m_folder = NextLink();
-		return m_value;
-	}
-	SfFolder *Value() const { return m_value; }
-	void Get(SfRepo* &repo, SfFolder* &folder) const {
-		m_itRepo.Get(repo);
-		folder = m_value;
-	}
-
-private:
-	SfFolder *NextLink() {
-		SfRepo *repo;
-		while (repo = m_itRepo.Next()) {
-			if (repo->folders)
-				break;
-		}
-		return repo? repo->folders: NULL;
-	}
-	SfRepoIter m_itRepo;
-	SfFolder *m_folder, *m_value;
-};
-
-struct SfFileIter
-{
-	SfFileIter(SfRepo *repo): m_itFolder(repo) {
-		m_file = NextLink();
-		m_value = NULL;
-	}
-	SfFile *Next() {
-		if (m_file == NULL)
-			return NULL;
-		m_value = m_file;
-		m_file = m_file->next;
-		if (m_file == NULL)
-			m_file = NextLink();
-		return m_value;
-	}
-	SfFile *Value() const { return m_value; }
-	void Get(SfRepo* &repo, SfFolder* &folder, SfFile* &file) const {
-		m_itFolder.Get(repo, folder);
-		file = m_value;
-	}
-
-private:
-	SfFile *NextLink() {
-		SfFolder *folder;
-		while (folder = m_itFolder.Next()) {
-			if (folder->files)
-				break;
-		}
-		return folder? folder->files: NULL;
-	}
-	SfFolderIter m_itFolder;
-	SfFile *m_file, *m_value;
-};
-
-struct SfSymbolIter
-{
-	SfSymbolIter(SfRepo *repo): m_itFile(repo) {
-		m_symbol = NextLink();
-		m_value = NULL;
-	}
-	SfSymbol *Next() {
-		if (m_symbol == NULL)
-			return NULL;
-		m_value = m_symbol;
-		m_symbol = m_symbol->next;
-		if (m_symbol == NULL)
-			m_symbol = NextLink();
-		return m_value;
-	}
-	SfSymbol *Value() { return m_value; }
-
-	const SfFileIter &FileIter() { return m_itFile; }
-
-private:
-	SfSymbol *NextLink() {
-		SfFile *file;
-		while (file = m_itFile.Next()) {
-			if (file->symbols)
-				break;
-		}
-		return file? file->symbols: NULL;
-	}
-	SfFileIter m_itFile;
-	SfSymbol *m_symbol, *m_value;
-};
-
-/*
-	// Test code for tranverse objects
-	int maxcnt = 10;
-	int i;
-	SfFolderIter itFolder(g_repos);
-	for (i=0; i<maxcnt && itFolder.Next(); ++i) {
-		itFolder.Get(repo, folder);
-		printf("%s/%s\n", repo->root, folder->name);
-	}
-	SfFileIter itFile(g_repos);
-	for (i=0; i<maxcnt && itFile.Next(); ++i) {
-		itFile.Get(repo, folder, file);
-		printf("%s/%s/%s\n", repo->root, folder->name, file->name);
-	}
-	SfSymbolIter itSymbol(g_repos);
-	for (i=0; i<maxcnt && itSymbol.Next(); ++i) {
-		symbol = itSymbol.Value();
-		const SfFileIter &it = itSymbol.FileIter();
-		it.Get(repo, folder, file);
-
-		printf("%s,%s,%s,%s - %s/%s/%s\n", symbol->name(), symbol->line(), symbol->kind(), symbol->extra(), repo->root, folder->name, file->name);
-	}
-*/
-// }}}
-
-// ==== others {{{
-struct FindItem
+struct SfContext
 {
 	SfRepo *repo;
 	SfFolder *folder;
@@ -278,10 +130,108 @@ struct FindItem
 	SfSymbol *symbol;
 };
 
+class SfRepoIter
+{
+public:
+	SfRepoIter(SfRepo *repo) {
+		m_vrepo.next = repo;
+		memset(&m_ctx, 0, sizeof(SfContext));
+		m_ctx.repo = &m_vrepo;
+	}
+	SfRepo *Next() {
+		if (m_ctx.repo)
+			m_ctx.repo = m_ctx.repo->next;
+		return m_ctx.repo;
+	}
+	SfRepo *Value() const { return m_ctx.repo; }
+
+	const SfContext &GetContext() const {
+		return m_ctx;
+	}
+protected:
+	SfRepo m_vrepo; // a virutal head
+	SfContext m_ctx;
+};
+
+struct SfFolderIter: public SfRepoIter
+{
+	SfFolderIter(SfRepo *repo): SfRepoIter(repo) {
+	}
+	SfFolder *Next() {
+		if (m_ctx.folder && m_ctx.folder->next)
+			m_ctx.folder = m_ctx.folder->next;
+		else
+			m_ctx.folder = NextLink();
+		return m_ctx.folder;
+	}
+	SfFolder *Value() const { return m_ctx.folder; }
+
+private:
+	SfFolder *NextLink() {
+		SfRepo *repo;
+		while (repo = SfRepoIter::Next()) {
+			if (repo->folders)
+				break;
+		}
+		return repo? repo->folders: NULL;
+	}
+};
+
+struct SfFileIter: public SfFolderIter
+{
+	SfFileIter(SfRepo *repo): SfFolderIter(repo) {
+	}
+	SfFile *Next() {
+		if (m_ctx.file && m_ctx.file->next)
+			m_ctx.file = m_ctx.file->next;
+		else 
+			m_ctx.file = NextLink();
+		return m_ctx.file;
+	}
+	SfFile *Value() const { return m_ctx.file; }
+
+private:
+	SfFile *NextLink() {
+		SfFolder *folder;
+		while (folder = SfFolderIter::Next()) {
+			if (folder->files)
+				break;
+		}
+		return folder? folder->files: NULL;
+	}
+};
+
+struct SfSymbolIter: public SfFileIter
+{
+	SfSymbolIter(SfRepo *repo): SfFileIter(repo) {
+	}
+	SfSymbol *Next() {
+		if (m_ctx.symbol && m_ctx.symbol->next)
+			m_ctx.symbol = m_ctx.symbol->next;
+		else
+			m_ctx.symbol = NextLink();
+		return m_ctx.symbol;
+	}
+	SfSymbol *Value() { return m_ctx.symbol; }
+
+private:
+	SfSymbol *NextLink() {
+		SfFile *file;
+		while (file = SfFileIter::Next()) {
+			if (file->symbols)
+				break;
+		}
+		return file? file->symbols: NULL;
+	}
+};
+
+// }}}
+
+// ==== others {{{
 struct FindResult
 {
 	char kind; // 'f','s'
-	vector<FindItem> items;
+	vector<SfContext> items;
 	int curidx;
 
 	void Init(char kind) {
@@ -493,6 +443,10 @@ int LoadRepofile(FILE *fp)
 		if (buf[0] == '\t' && buf[2] == '\t') {
 			char *value = strtok(buf+3, "\t");
 			if (buf[1] == 'd') {
+				if (pFolder == NULL) {
+					printf("*** bad format (no repo before folder)!\n");
+					exit(-1);
+				}
 				SfFolder *folder = CALLOC_T(SfFolder);
 				folder->name = strdup(value);
 
@@ -503,6 +457,11 @@ int LoadRepofile(FILE *fp)
 				pFile = &folder->files;
 			}
 			else if (buf[1] == 'f') {
+				if (pFile == NULL) {
+					printf("*** bad format! (no folder before file)\n");
+					exit(-1);
+				}
+
 				SfFile *file = CALLOC_T(SfFile);
 				file->name = strdup(value);
 
@@ -515,6 +474,11 @@ int LoadRepofile(FILE *fp)
 			}
 		}
 		else { // symbol
+			if (pSymbol == NULL) {
+				printf("*** bad format! (no file before symbol)\n");
+				exit(-1);
+			}
+
 			SfSymbol *symbol = NewSymbol(buf);
 
 			*pSymbol = symbol;
@@ -555,6 +519,7 @@ void FreeRepos()
 	}
 	g_repos = NULL;
 }
+
 // }}}
 
 // ==== search files and symbols {{{
@@ -633,41 +598,46 @@ struct SfPattern
 };
 typedef vector<SfPattern> SfPatterns;
 
-char *GetFullName(char *buf, const char *root, const char *dirname, const char *file = NULL, const char *line = NULL)
+char *GetFullName(char *buf, const char *root, const char *dirname, const char *file = NULL)
 {
 // 	static char buf[1024];
 	// 1. replace root
 	root = g_rootsubs.Substitue(root);
+
+	char quote[2] = {0,0};
+	if (file && (strchr(root, ' ') != NULL || strchr(dirname, ' ') != NULL || strchr(file, ' ') != NULL))
+		quote[0] = '"';
+
 	// 2. remove ./ at the beginning of dirname
 	const char *p = dirname;
 	if (*p == '.') {
 		++ p;
-		if (*p == 0) {
-			strcpy(buf, root);
-			return buf;
-		}
-		if (*p == '/' || *p == '\\')
+		if (*p == '/' || *p == '\\') // './xxx'
+		{
 			++p;
+			dirname = p;
+		}
+		else if (*p == 0) // '.'
+			dirname = p;
 	}
-	dirname = p;
-	char quote[2] = {0,0};
-	if (file && (strchr(root, ' ') != NULL || strchr(dirname, ' ') != NULL || strchr(file, ' ') != NULL))
-		quote[0] = '"';
-	if (file == NULL)
-		sprintf(buf, "%s%s%c%s%s", quote, root, SEP, p, quote);
-	else if (line == 0)
-		sprintf(buf, "%s%s%c%s%c%s%s", quote, root, SEP, p, SEP, file, quote);
-	else
-		sprintf(buf, "+%s %s%s%c%s%c%s%s", line, quote, root, SEP, p, SEP, file, quote);
+	if (dirname[0] == 0) {
+		if (file == NULL)
+			sprintf(buf, "%s%s%s", quote, root, quote);
+		else 
+			sprintf(buf, "%s%s%c%s%s", quote, root, SEP, file, quote);
+	}
+	else {
+		if (file == NULL)
+			sprintf(buf, "%s%s%c%s%s", quote, root, SEP, dirname, quote);
+		else 
+			sprintf(buf, "%s%s%c%s%c%s%s", quote, root, SEP, dirname, SEP, file, quote);
+	}
 	return buf;
 }
 
 void QueryFile(char *arg)
 {
 	SfFileIter it(g_repos);
-	SfRepo *repo;
-	SfFile *file;
-	SfFolder *folder;
 	SfPatterns pats, pats_dir;
 
 	char *p;
@@ -684,8 +654,8 @@ void QueryFile(char *arg)
 
 	g_result.Init('f');
 	while (it.Next()) {
-		it.Get(repo, folder, file);
-		char *name = file->name;
+		const SfContext &ctx = it.GetContext();
+		char *name = ctx.file->name;
 		bool ok = true;
 		for (SfPattern &pat: pats) {
 			if (! pat.Match(name)) {
@@ -694,7 +664,7 @@ void QueryFile(char *arg)
 			}
 		}
 		if (ok && pats_dir.size() > 0) {
-			name = folder->name;
+			name = ctx.folder->name;
 			for (SfPattern &pat: pats_dir) {
 				if (! pat.Match(name)) {
 					ok = false;
@@ -704,10 +674,10 @@ void QueryFile(char *arg)
 		}
 		if (ok) {
 			auto &items = g_result.items;
-			items.push_back(FindItem{repo, folder, file, NULL});
+			items.push_back(ctx);
 			int cnt = items.size();
 			char buf[1024];
-			printf("%d:\t%s\t%s\n", cnt, file->name, GetFullName(buf, repo->root, folder->name));
+			printf("%d:\t%s\t%s\n", cnt, ctx.file->name, GetFullName(buf, ctx.repo->root, ctx.folder->name));
 			if (cnt >= MAX_FOUND) {
 				printf("... (max %d)\n", MAX_FOUND);
 				break;
@@ -719,10 +689,6 @@ void QueryFile(char *arg)
 void QuerySymbol(char *arg)
 {
 	SfSymbolIter it(g_repos);
-	SfRepo *repo;
-	SfFile *file;
-	SfFolder *folder;
-	SfSymbol *symbol;
 
 	char pat_kind[20] = {0};
 	char kindlen = 0;
@@ -748,7 +714,7 @@ void QuerySymbol(char *arg)
 
 	g_result.Init('s');
 	while (it.Next()) {
-		symbol = it.Value();
+		SfSymbol *symbol = it.Value();
 
 		char *name = symbol->name();
 		bool ok = true;
@@ -777,16 +743,15 @@ void QuerySymbol(char *arg)
 		}
 		if (ok) {
 			auto &items = g_result.items;
-
-			const SfFileIter &itFile = it.FileIter();
-			itFile.Get(repo, folder, file);
-			items.push_back(FindItem{repo, folder, file, symbol});
+			const SfContext &ctx = it.GetContext();
+			items.push_back(ctx);
 			int cnt = items.size();
 			char buf[1024];
 			if (!g_forsvr)
-				printf("%d:\t%s\t%s\t%s\t%s:%s\n", cnt, kind, symbol->name(), symbol->extra(), file->name, symbol->line());
+				printf("%d:\t%s\t%s\t%s\t%s:%s\n", cnt, kind, symbol->name(), symbol->extra(), ctx.file->name, symbol->line());
 			else
-				printf("%d:\t%s\t%s\t%s\t%s:%s\t%s\n", cnt, kind, symbol->name(), symbol->extra(), file->name, symbol->line(), GetFullName(buf, repo->root, folder->name));
+				printf("%d:\t%s\t%s\t%s\t%s:%s\t%s\n", cnt, kind, symbol->name(), symbol->extra(), ctx.file->name, symbol->line(), 
+						GetFullName(buf, ctx.repo->root, ctx.folder->name));
 			if (cnt >= MAX_FOUND) {
 				printf("... (max %d)\n", MAX_FOUND);
 				break;
@@ -813,14 +778,44 @@ void GotoResult(const char *cmd, const char *arg)
 		char buf[1024], *p = buf;
 		p += sprintf(p, "%s ", EDITOR);
 
-		const FindItem &itm = g_result.items[idx];
-		const char *line = g_result.kind == 's'? itm.symbol->line(): NULL;
-		GetFullName(p, itm.repo->root, itm.folder->name, itm.file->name, line);
+		const SfContext &ctx = g_result.items[idx];
+		const char *line = g_result.kind == 's'? ctx.symbol->line(): NULL;
+		if (line) {
+			p += sprintf(p, "+%s ", line);
+		}
+		GetFullName(p, ctx.repo->root, ctx.folder->name, ctx.file->name);
 		printf("go %d: %s\n", idx+1, buf);
 		system(buf);
 	}
 }
 //}}}
+
+int TestShow()
+{
+	// Test code for tranverse objects
+	int maxcnt = 40;
+	int i;
+	char buf[1024];
+	printf("=== folders:\n");
+	SfFolderIter itFolder(g_repos);
+	for (i=0; i<maxcnt && itFolder.Next(); ++i) {
+		const SfContext &ctx = itFolder.GetContext();
+		printf("%d: %s\n", i+1, GetFullName(buf, ctx.repo->root, ctx.folder->name));
+	}
+	printf("=== files:\n");
+	SfFileIter itFile(g_repos);
+	for (i=0; i<maxcnt && itFile.Next(); ++i) {
+		const SfContext &ctx = itFile.GetContext();
+		printf("%d: %s\n", i+1, GetFullName(buf, ctx.repo->root, ctx.folder->name, ctx.file->name));
+	}
+	printf("=== symbols:\n");
+	SfSymbolIter itSymbol(g_repos);
+	for (i=0; i<maxcnt && itSymbol.Next(); ++i) {
+		const SfContext &ctx = itSymbol.GetContext();
+		printf("%d: %s\t%s\t%s\t%s:%s\n", i+1, ctx.symbol->kind(), ctx.symbol->name(), ctx.symbol->extra(), GetFullName(buf, ctx.repo->root, ctx.folder->name, ctx.file->name), ctx.symbol->line());
+	}
+	return 0;
+}
 // }}}
 
 // ====== main routine {{{
@@ -849,10 +844,9 @@ int main(int argc, char *argv[])
 // 	printf("for attach (pid=%d)...\n", getpid());
 // 	sleep(10);
 
-	SfRepo *repo;
-	SfFolder *folder;
-	SfFile *file;
-	SfSymbol *symbol;
+	// !!! to debug the loading and iterator, run: $ SF_TEST=1 symfind 1.repo.gz
+	if (getenv("SF_TEST") != NULL)
+		return TestShow();
 
 	fputs("> ", stdout);
 	if (g_forsvr)
@@ -910,5 +904,4 @@ int main(int argc, char *argv[])
 	return 0;
 }
 // }}}
-
 // vim: set foldmethod=marker :
