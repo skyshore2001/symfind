@@ -8,8 +8,6 @@
 #include <vector>
 using namespace std;
 
-// TODO: add repo (and multi repo in args)
-
 // load 57586 files (56K), 1600408 symbols (1.6M)
 // 903M - perl
 // 223M - c++ x64, no optimization.
@@ -65,6 +63,8 @@ editor [prog=vi] \n\
   set default viewer for go. \n\
 replace [old=new] \n\
   replace the real path from \"old\" to \"new\" \n\
+add {repofiles} \n\
+  add additional repofiles \n\
 ? \n\
   show this help. \n\
 q \n\
@@ -411,6 +411,10 @@ int LoadRepofile(FILE *fp)
 	SfFile **pFile = NULL;
 	SfSymbol **pSymbol = NULL;
 
+	// goto repo link end.
+	while (*pRepo) {
+		pRepo = &((*pRepo)->next);
+	}
 	int scnt = 0, fcnt = 0;
 	while (fgets(buf, 1024, fp)) {
 		if (buf[0] == '!') {
@@ -489,6 +493,35 @@ int LoadRepofile(FILE *fp)
 	EndRepo();
 	printf("load %d files, %d symbols in %.3fs.\n", fcnt, scnt, (double)(clock()-t0)/CLOCKS_PER_SEC);
 	return 0;
+}
+
+int LoadRepofiles(int filecnt, const char *files[])
+{
+	for (int i=0; i<filecnt; ++i) {
+		FILE *fp = NULL;
+		const char *file = files[i];
+		int len = strlen(file);
+		bool isgz = len > 3 && strcasecmp(file+len-3, ".gz") == 0;
+		if (isgz) {
+			char buf[1024];
+			sprintf(buf, "gzip -dc \"%s\"", file);
+		// 	printf("cmd: '%s'\n", buf);
+			fp = popen(buf, "r");
+		}
+		else {
+			fp = fopen(file, "r");
+		}
+		if (fp == NULL) {
+			printf("*** cannot open repo-file \"%s\"!\n", file);
+			continue;
+		}
+		printf("=== loading %s...\n", file);
+		LoadRepofile(fp);
+		if (isgz)
+			pclose(fp);
+		else
+			fclose(fp);
+	}
 }
 
 void FreeRepos()
@@ -819,7 +852,7 @@ int TestShow()
 // }}}
 
 // ====== main routine {{{
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
 	if (argc <= 1) {
 		printf("Usage: symfind <repo>\n");
@@ -830,16 +863,9 @@ int main(int argc, char *argv[])
 		setbuf(stdout, NULL);
 		setbuf(stderr, NULL);
 	}
-	char buf[1024];
-	sprintf(buf, "gzip -dc \"%s\"", argv[1]);
-// 	printf("cmd: '%s'\n", buf);
-	FILE *fp = popen(buf, "r");
-	if (fp == NULL) {
-		printf("*** cannot open repo-file \"%s\"!\n", argv[1]);
-	}
-	printf("=== loading %s...\n", argv[1]);
-	LoadRepofile(fp);
-	pclose(fp);
+	-- argc;
+	++ argv;
+	LoadRepofiles(argc, argv);
 
 // 	printf("for attach (pid=%d)...\n", getpid());
 // 	sleep(10);
@@ -848,6 +874,7 @@ int main(int argc, char *argv[])
 	if (getenv("SF_TEST") != NULL)
 		return TestShow();
 
+	char buf[1024];
 	fputs("> ", stdout);
 	if (g_forsvr)
 		fputs("\n", stdout);
@@ -891,6 +918,17 @@ int main(int argc, char *argv[])
 				g_rootsubs.Set(arg);
 			}
 			printf("root %s\n", g_rootsubs.pattern);
+		}
+		else if (strcmp(cmd, "add") == 0) {
+			if (arg) {
+				int cnt = 0;
+				const char *args[10];
+				args[cnt++] = strtok(arg, " ");
+				while ((args[cnt] = strtok(NULL, " ")) != NULL) {
+					++ cnt;
+				}
+				LoadRepofiles(cnt, args);
+			}
 		}
 		else {
 			printf("*** unknown command: '%s'. Type '?' for help.\n", cmd);
