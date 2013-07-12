@@ -401,6 +401,16 @@ SfSymbol *NewSymbol(char *buf)
 	pRepo = NULL; \
 	EndFolder()
 
+bool RootExists(const char *root)
+{
+	SfRepoIter it(g_repos);
+	while (it.Next()) {
+		if (strcmp(it.Value()->root, root) == 0)
+			return true;
+	}
+	return false;
+}
+
 int LoadRepofile(FILE *fp)
 {
 	clock_t t0 = clock();
@@ -424,6 +434,12 @@ int LoadRepofile(FILE *fp)
 					p += 5;
 					SfRepo *repo = CALLOC_T(SfRepo);
 					repo->root = strdup(strtok(p, " \r\n"));
+					if (RootExists(repo->root)) {
+						printf("!!! ignore repo loading as root dir exists: %s\n", repo->root);
+						FREE(repo->root);
+						FREE(repo);
+						break;
+					}
 					if (strchr(repo->root, '/') != NULL) {
 						SEP = '/';
 					}
