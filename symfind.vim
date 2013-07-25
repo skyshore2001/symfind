@@ -1,6 +1,6 @@
 let s:bufname = '__SYMFIND__'
 let s:sp = "------------------------------------------"
-let s:help = ['f xxx - find file xxx', 's xxx - find symbol xxx']
+let s:help = ['f xxx - find file xxx', 's xxx - find symbol xxx', 'g xxx - grep pattern xxx' ]
 let s:exname = ''
 
 "===== toolkit {{{
@@ -89,8 +89,19 @@ func! SF_call(cmd)
 	call setline(2, s:sp)
 	silent! 3,$d
 	call setline(3, rv)
-	1
-	starti!
+	if s =~ '\v^g\s+'
+		exec "!" . rv[0] . "|tee 1.out"
+		if winnr('$') != 1
+			q
+		endif
+		lgetfile 1.out
+		lopen
+		stopi
+	else
+		" in symfind window
+		1
+		starti!
+	endif
 endf
 
 func! SF_go(splitwnd)

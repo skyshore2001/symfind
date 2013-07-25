@@ -4,8 +4,10 @@
 #include <stdlib.h>
 #include <time.h>
 #include <ctype.h>
+#include <sys/stat.h>
 
 #include <vector>
+#include <string>
 using namespace std;
 
 // load 57586 files (56K), 1600408 symbols (1.6M)
@@ -41,6 +43,7 @@ use STL is simple and more readable. But I use my own data structure because: 1.
 // ====== config {{{
 int MAX_FOUND = 25;
 char EDITOR[100] = "vi";
+const char *TMP_OUT = "1.out";
 
 #ifndef _WINDOWS
 char SEP = '/';
@@ -50,9 +53,11 @@ char SEP = '\\';
 
 #define HELPSTR "\
 f {patterns} \n\
-  file search \n\
+  file search, e.g. \"f string .h$\" \n\
 s {patterns} \n\
-  symbol search \n\
+  symbol search, e.g. \"s string c\" \n\
+g {pattern} [filepats] \n\
+  grep symbol, e.g. \"g string *.h *.cpp\" \n\
 go [num=1] \n\
   open the {num}th result  \n\
 n/N \n\
@@ -61,10 +66,12 @@ max [num=25] \n\
   set max displayed result \n\
 editor [prog=vi] \n\
   set default viewer for go. \n\
-replace [old=new] \n\
+root [old=new] \n\
   replace the real path from \"old\" to \"new\" \n\
 add {repofiles} \n\
   add additional repofiles \n\
+! {shellcmd} \n\
+  exec shell command \n\
 ? \n\
   show this help. \n\
 q \n\
@@ -116,6 +123,7 @@ struct SfFolder
 struct SfRepo
 {
 	char *root;
+	char *tagscan_pat;
 	SfFolder *folders;
 	SfRepo *next;
 };
@@ -338,6 +346,14 @@ bool BeginWith_case(const char *s1, const char *s2)
 	return ok && *s2 == 0;
 }
 
+inline bool ContainsUpper(const char *p)
+{
+	for (; *p; ++p) {
+		if (isupper(*p))
+			return true;
+	}
+	return false;
+}
 // }}}
 
 // ====== functions {{{
@@ -426,13 +442,14 @@ int LoadRepofile(FILE *fp)
 		pRepo = &((*pRepo)->next);
 	}
 	int scnt = 0, fcnt = 0;
+	SfRepo *repo = NULL;
 	while (fgets(buf, 1024, fp)) {
 		if (buf[0] == '!') {
 			char *p = buf+1;
 			if (strncmp(p, "ROOT ", 5) == 0) {
 				if (!ismeta) {
 					p += 5;
-					SfRepo *repo = CALLOC_T(SfRepo);
+					repo = CALLOC_T(SfRepo);
 					repo->root = strdup(strtok(p, " \r\n"));
 					if (RootExists(repo->root)) {
 						printf("!!! ignore repo loading as root dir exists: %s\n", repo->root);
@@ -454,6 +471,12 @@ int LoadRepofile(FILE *fp)
 					pFolder = &repo->folders;
 				}
 				ismeta = true;
+			}
+			else if (strncmp(p, "TAGSCAN_PAT ", 12) == 0) {
+				p += 12;
+				if (repo) {
+					repo->tagscan_pat = strdup(strtok(p, " \r\n"));
+				}
 			}
 			continue;
 		}
@@ -562,6 +585,7 @@ void FreeRepos()
 			FREE(p);
 		}
 		FREE(repo->root);
+		FREE(repo->tagscan_pat);
 		p = repo;
 		repo = repo->next;
 		FREE(p);
@@ -597,13 +621,7 @@ struct SfPattern
 		patlen = p1 -p;
 		this->pat = p;
 
-		fnMatch = &SfPattern::Match_icase;
-		for (; *p; ++p) {
-			if (isupper(*p)) {
-				fnMatch = &SfPattern::Match_case;
-				break;
-			}
-		}
+		fnMatch = ContainsUpper(p)? &SfPattern::Match_case: &SfPattern::Match_icase;
 	}
 	bool Match(const char *s) {
 		return (this->*fnMatch)(s);
@@ -837,6 +855,81 @@ void GotoResult(const char *cmd, const char *arg)
 		system(buf);
 	}
 }
+
+void GetTagscanPats(vector<string> &pats)
+{
+	pats.clear();
+
+	// "*.cpp;*.h;" -> ["*.cpp", "*.h"]
+	SfRepoIter it(g_repos);
+	while (it.Next()) {
+		const char *p = it.Value()->tagscan_pat, *p2 = p;
+		if (p == NULL)
+			continue;
+		for (; *p2 != 0; ++p2) {
+			if (*p2 == ';') {
+				if (p2 > p)
+					pats.push_back(string(p, 0, p2-p));
+				p = p2 +1;
+			}
+		}
+		if (p2 > p)
+			pats.push_back(string(p, 0, p2-p));
+	}
+}
+
+void GrepSymbol(char *arg)
+{
+	char gcmd[2048], *p = gcmd, *p1;
+	p += sprintf(p, "grep -Hn -R");
+	char *pat = strtok(arg, " ");
+	// ignore case if contains upper letter
+	if (ContainsUpper(pat))
+		p += sprintf(p, " -i");
+	p += sprintf(p, " -e \"%s\"", pat);
+	vector<string> incs;
+	while (p1 = strtok(NULL, " ")) {
+		if (p1[0] == '-') {
+			++ p1;
+			p += sprintf(p, " --exclude \"%s\"", p1);
+		}
+		else {
+			incs.push_back(p1);
+// 			p += sprintf(p, " --include \"%s\"", p1);
+		}
+	}
+	if (incs.size() == 0) { // use the default patterns when scanning
+		GetTagscanPats(incs);
+	}
+	for (const string &inc: incs) {
+		p += sprintf(p, " --include \"%s\"", inc.c_str());
+	}
+
+	SfRepoIter it(g_repos);
+	while (it.Next()) {
+		p += sprintf(p, " \"%s\"", it.Value()->root);
+	}
+	if (g_forsvr) {
+		printf("%s\n", gcmd);
+	}
+	else {
+		p += sprintf(p, " | tee %s", TMP_OUT);
+		printf("%s\n", gcmd);
+		system(gcmd);
+		struct stat st;
+		if (stat(TMP_OUT, &st) == 0 && st.st_size > 0)
+		{
+			printf("(Search results are saved in %s)\n", TMP_OUT);
+
+			const char *ed = "vi";
+			if (strstr(EDITOR, "vi")) { // vi/vim/gvim
+				ed = EDITOR;
+			}
+			sprintf(gcmd, "%s -q %s -c copen", ed, TMP_OUT);
+			system(gcmd);
+		}
+	}
+}
 //}}}
 
 int TestShow()
@@ -895,8 +988,15 @@ int main(int argc, const char *argv[])
 	if (g_forsvr)
 		fputs("\n", stdout);
 	while (fgets(buf, 1024, stdin)) {
-		char *cmd = strtok(buf, " \r\n");
-		char *arg = strtok(NULL, "\r\n");
+		// shell cmd
+		if (buf[0] == '!') {
+			system(buf+1);
+			goto nx;
+		}
+
+		char *cmd, *arg;
+		cmd = strtok(buf, " \r\n");
+		arg = strtok(NULL, "\r\n");
 		if (strcmp(cmd, "f") == 0 || strcmp(cmd, "s") == 0) {
 			clock_t t0 = clock();
 			if (cmd[0] == 'f')
@@ -904,6 +1004,11 @@ int main(int argc, const char *argv[])
 			else // 's'
 				QuerySymbol(arg);
 			printf("(Total %d result(s) in %.3fs.)\n", g_result.items.size(), (double)(clock()-t0)/CLOCKS_PER_SEC);
+		}
+		else if (strcmp(cmd, "g") == 0) { // grep
+			if (arg) {
+				GrepSymbol(arg);
+			}
 		}
 		else if (strcmp(cmd, "q") == 0) {
 			break;
@@ -949,6 +1054,7 @@ int main(int argc, const char *argv[])
 		else {
 			printf("*** unknown command: '%s'. Type '?' for help.\n", cmd);
 		}
+nx:
 		printf("> ");
 		if (g_forsvr)
 			fputs("\n", stdout);

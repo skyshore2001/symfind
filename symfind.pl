@@ -13,7 +13,7 @@ my $EDITOR = 'vi';
 my $IS_MSWIN = $^O eq 'MSWin32';
 my $sep = $IS_MSWIN? '\\': '/';
 
-my @REPOS; # elem: repo - {root, \@folders, \@files, \@symbols}
+my @REPOS; # elem: repo - {root, tagscan_pat, \@folders, \@files, \@symbols}
 # file: [name, folder, [repo] ]
 my ($IDX_NAME, $IDX_FOLDER, $IDX_REPO) = (0..10);
 # symbol: [name, line, kind, extra, fileobj]
@@ -187,6 +187,70 @@ sub querySymbol # ($what, $out)
 quit:
 }
 
+sub getTagscanPats
+{
+	my @pats;
+	my %pats1;
+	for (@REPOS) {
+		for (split(';', $_->{tagscan_pat})) {
+			unless (exists($pats1{$_})) {
+				push @pats, $_;
+				$pats1{$_} = 1;
+			}
+		}
+	}
+	@pats;
+}
+
+# g {pat} [include|-exclude], e.g. "g LINUX_TODO", "g LINUX_TODO *.h *.cpp -thirdparty"
+sub grepSymbol # ($arg, $out)
+{
+	my ($arg, $out) = @_;
+	return unless $arg;
+
+	my $gcmd = 'grep -Hn -R ';
+	my @a = split(/\s+/, $arg);
+	my $pat = shift @a;
+	my $icase = $pat =~ /[A-Z]/? '': '-i';
+	$gcmd .= "$icase -e '$pat'";
+	
+	my @inc;
+	for (@a) {
+		if (s/^-//) {
+			$gcmd .= " --exclude \"$_\"";
+		}
+		else {
+			push @inc, $_;
+		}
+	}
+	@inc = getTagscanPats() if scalar(@inc)==0;
+	for (@inc) {
+		$gcmd .= " --include \"$_\"";
+	}
+
+	for (@REPOS) {
+		$gcmd .= " \"$_->{root}\"";
+	}
+	if ($g_forsvr) {
+		print $out "$gcmd\n";
+	}
+	else {
+		my $TMP_OUT = "1.out";
+		$gcmd .= " | tee $TMP_OUT";
+		print $out "$gcmd\n";
+		system($gcmd);
+		if (-s $TMP_OUT)
+		{
+			print $out "(Search results are saved in $TMP_OUT)\n";
+			my $ed = 'vi';
+			if ($EDITOR =~ /vi/) { # vi/vim/gvim
+				$ed = $EDITOR;
+			}
+			system("$ed -q $TMP_OUT -c copen");
+		}
+	}
+}
+
 sub gotoResult # ($idx)
 {
 	return unless defined($g_result) && defined($g_lastidx);
@@ -255,6 +319,9 @@ for (@ARGV) {
 				}
 				$ismeta = 1;
 			}
+			elsif (/^!TAGSCAN_PAT\s+(.+)/) {
+				$repo->{tagscan_pat} = $1;
+			}
 			next;
  		}
 		$ismeta = 0;
@@ -293,17 +360,24 @@ printf "load $fcnt files, $scnt symbols in %.3fs.\n", time()-$T0;
 	while (<STDIN>) {
 		chomp;
 		goto nx if $_ eq '';
+		if (s/^!//) { # shell cmd
+			system($_);
+			goto nx;
+		}
 		my ($cmd, $arg) = split(/\s+/, $_, 2);
 		$arg = '' unless defined $arg;
-		if ($cmd eq 'f') {
+		if ($cmd eq 'f') { # file
 			my $t0 = time();
 			queryFile($arg, \*STDOUT);
 			printf "(Total %d result(s) in %.3fs.)\n", scalar(@{$g_result->{list}}), time()-$t0;
 		}
-		elsif ($cmd eq 's') {
+		elsif ($cmd eq 's') { # symbol
 			my $t0 = time();
 			querySymbol($arg, \*STDOUT);
 			printf "(Total %d result(s) in %.3fs.)\n", scalar(@{$g_result->{list}}), time()-$t0;
+		}
+		elsif ($cmd eq 'g') { # grep 
+			grepSymbol($arg, \*STDOUT);
 		}
 		elsif ($cmd eq 'q') {
 			print "=== quit.\n";
@@ -349,9 +423,11 @@ printf "load $fcnt files, $scnt symbols in %.3fs.\n", time()-$T0;
 		elsif ($cmd eq '?') {
 			print <<END;
 f {patterns}
-  file search
+  file search, e.g. "f string .h\$"
 s {patterns}
-  symbol search
+  symbol search, e.g. "s string c"
+g {pattern} [filepats]
+  grep symbol, e.g. "g string *.h *.cpp"
 go [num=1]
   open the {num}th result 
 n/N
@@ -360,8 +436,12 @@ max [num=25]
   set max displayed result
 editor [prog=vi]
   set default viewer for go.
-replace [old=new]
+root [old=new]
   replace the real path from "old" to "new"
+add {repofiles}
+  add additional repofiles
+! {shellcmd}
+  exec shell command
 ?
   show this help.
 q

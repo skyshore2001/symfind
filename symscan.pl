@@ -12,7 +12,7 @@ use Time::HiRes;
 ###### config {{{
 my $REPO_VER = 2;
 my $repofile = '1.repo.gz';
-my $TAGSCAN_PAT = '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s';
+my $TAGSCAN_PAT = '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s;*.pl;*.py';
 my $IGNORE_PAT = '*.o;*.obj;*.d;.*';
 #}}}
 
