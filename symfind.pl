@@ -208,11 +208,15 @@ sub grepSymbol # ($arg, $out)
 	my ($arg, $out) = @_;
 	return unless $arg;
 
-	my $gcmd = 'grep -Hn -R ';
+	my $gcmd = 'grep -Hn -R';
 	my @a = split(/\s+/, $arg);
 	my $pat = shift @a;
+	while ($pat =~ /^-/) {
+		$gcmd .= " $pat";
+		$pat = shift @a;
+	}
 	my $icase = $pat =~ /[A-Z]/? '': '-i';
-	$gcmd .= "$icase -e '$pat'";
+	$gcmd .= " $icase -e '$pat'";
 	
 	my @inc;
 	for (@a) {

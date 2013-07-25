@@ -883,6 +883,11 @@ void GrepSymbol(char *arg)
 	char gcmd[2048], *p = gcmd, *p1;
 	p += sprintf(p, "grep -Hn -R");
 	char *pat = strtok(arg, " ");
+	// begin with "-": as grep option. e.g. "g -w hello"
+	while (pat[0] == '-') { 
+		p += sprintf(p, " %s", pat);
+		pat = strtok(NULL, " ");
+	}
 	// ignore case if contains upper letter
 	if (ContainsUpper(pat))
 		p += sprintf(p, " -i");

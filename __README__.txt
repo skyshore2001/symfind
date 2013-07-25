@@ -9,7 +9,8 @@
 |4| Use Symfind						|sf-using|
 	|4.1| Repository					|sf-repo|
 	|4.2| Query syntax				|sf-query|
-	|4.3| Options					|sf-options|
+	|4.3| Grep reference 				|sf-grep|
+	|4.4| Options					|sf-options|
 |5| Use Symsvr and vim plugin				|sf-symsvr|
 |6| Contact me						|sf-contact|
 
@@ -220,7 +221,32 @@ symfind.pl, set envvar SYMFIND, e.g. (on Linux) >
 	$ SYMFIND=symfind.pl symsvr.pl 1.repo.gz
 
 ==============================================================================
-*4.3* Options 							*sf-options*
+*4.3* Grep reference 						*sf-grep*
+
+Symfind works with GNU grep to find symbol reference. e.g. >
+	> g main
+	(search "main" under the repository root dir, recursively)
+	> g main *.cpp *.h
+	(search "main" in .cpp or .h files)
+	> g main -*.java
+	(search "main" in files except *.java)
+
+Search is case-insensitive unless your pattern contains uppercase letters. >
+	> g Main *.java
+	(search "Main", case-sensitive)
+
+The search pattern is directly used by grep. You can use grep option before
+the pattern: >
+	> g -w main
+	(-w: match the whole word)
+	> g -F main
+	(-F: pattern is fixed-string)
+
+On Windows, it's recommended to run Symfind under Mingw to work with correct
+POSIX programs like grep/tee.
+
+==============================================================================
+*4.4* Options 							*sf-options*
 
 Change max result items~
 By default 25 items are listed in the result. To change it: >
@@ -239,10 +265,10 @@ Root is the top-level folder name when you scan your project. e.g. >
 	$ symscan.pl /mnt/data/depot/sbo
 the root is "/mnt/data/depot/sbo". If you moved it to another path, e.g.
 "/mnt/data/depot2/sbo", then you can set option to reuse the repo-file: >
-	> dir /mnt/data/depot/sbo=/mnt/data/depot2/sbo
+	> root /mnt/data/depot/sbo=/mnt/data/depot2/sbo
 
 OR simply >
-	> dir depot=depot2
+	> root depot=depot2
 
 The result folder name will be checked and replaced if neccessary.
 
