@@ -1,6 +1,14 @@
 BUGS:
 > on MSWIN32, stags cannot quit if break program by Ctrl-C.
 
+2013/07/25 17:20:46
+> version 2.1
+Add grep supports. e.g.
+	> g main
+	> g main *.cpp
+Add shell command:
+	> !ls
+
 2013/06/25 10:42:03
 > NEW
 symscan.pl and stags work together better: stags process function prototype and macro/variable definition directly with maxlength=120.
@@ -20,21 +28,23 @@ symscan.pl and stags work together better: stags process function prototype and 
 
 
 2013/05/17 13:17:37
-> NF201305.1 - dir replace
+> NF201305.1 - root dir replace
 v1.1
 
 Requirement:
 if the path of your source code changes, the old repo should still work, no need to re-scan.
 
 Design:
-Add "dir" command to support dir replace. You can define multiple replace rules in one line.
+Add "root" command to support dir replace. You can define multiple replace rules in one line.
 e.g. 
-	> dir
-	(show dir definition)
-	> dir depot=depot2
+	> root
+	(show root definition)
+	> root depot=depot2
 	(define 1 rule: "depot" -> "depot2")
-	> dir depot=depot2;/mnt/data=/home
+	> root depot=depot2;/mnt/data=/home
 	(define 2 rules: "depot" -> "depot2", "/mnt/data" -> "/home")
+	> root .
+	(clear)
 
 the final result
 	/mnt/data/depot/sbo/source/1.cpp
