@@ -208,7 +208,7 @@ sub grepSymbol # ($arg, $out)
 	my ($arg, $out) = @_;
 	return unless $arg;
 
-	my $gcmd = 'grep -Hn -R';
+	my $gcmd = 'grep --line-buffered -Hn -R';
 	my @a = split(/\s+/, $arg);
 	my $pat = shift @a;
 	while ($pat =~ /^-/) {

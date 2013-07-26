@@ -881,7 +881,7 @@ void GetTagscanPats(vector<string> &pats)
 void GrepSymbol(char *arg)
 {
 	char gcmd[2048], *p = gcmd, *p1;
-	p += sprintf(p, "grep -Hn -R");
+	p += sprintf(p, "grep --line-buffered -Hn -R");
 	char *pat = strtok(arg, " ");
 	// begin with "-": as grep option. e.g. "g -w hello"
 	while (pat[0] == '-') { 
@@ -889,7 +889,7 @@ void GrepSymbol(char *arg)
 		pat = strtok(NULL, " ");
 	}
 	// ignore case if contains upper letter
-	if (ContainsUpper(pat))
+	if (!ContainsUpper(pat))
 		p += sprintf(p, " -i");
 	p += sprintf(p, " -e \"%s\"", pat);
 	vector<string> incs;

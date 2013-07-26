@@ -21,4 +21,13 @@ copy gzip.exe %BIN%\
 :: vim plugin
 copy symfind.vim %VIMFILES%\plugin\
 copy __README__.txt %VIMFILES%\doc\symfind.txt
+
+set opt=y
+set /p opt="view doc? (=y/n) "
+if "%opt%"=="y" (
+	gvim -c "helptags %VIMFILES%\doc | h symfind.txt | only"
+) else (
+	gvim -c "helptags %VIMFILES%\doc | q"
+	echo done.
+)
 pause

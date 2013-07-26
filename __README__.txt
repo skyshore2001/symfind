@@ -3,19 +3,19 @@
 	    Symfind - Locate finds and symbols for large project
 		    Liang, Jian - 2013/5
 
-|1| Introduction						|sf-intro|
-|2| Install						|sf-install|
-|3| Quick Start						|:Symfind|
-|4| Use Symfind						|sf-using|
-	|4.1| Repository					|sf-repo|
-	|4.2| Query syntax				|sf-query|
-	|4.3| Grep reference 				|sf-grep|
-	|4.4| Options					|sf-options|
+1 Introduction						|sf-intro|
+2 Install						|sf-install|
+3 Quick Start						|:Symfind|
+4 Use Symfind						|sf-using|
+	4.1 Repository					|sf-repo|
+	4.2 Query syntax				|sf-query|
+	4.3 Grep reference 				|sf-grep|
+	4.4 Options					|sf-options|
 |5| Use Symsvr and vim plugin				|sf-symsvr|
 |6| Contact me						|sf-contact|
 
 ==============================================================================
-*1* Introduction						*sf-intro*
+1 Introduction						*sf-intro*
 
 Symfind can be used to scan and locate file or symbol in your project folder. 
 It can work with vim.
@@ -59,7 +59,7 @@ for symbol lookup, and use simple strategy for reference lookup. It's simple,
 stable, reliable and fast.
 
 ==============================================================================
-*2* Install							*sf-install*
+2 Install							*sf-install*
 
 On MS Windows, you need install Perl.
 Modify install_windows.bat for your path and just run it. It's easy and 
@@ -72,7 +72,7 @@ symscan.pl. stags is a branch of ctags with slight change that works better
 with Symfind. You can find source code of stags in symfind source package.
 
 ==============================================================================
-*3*  Quick Start 						*:Symfind*
+3 Quick Start 						*:Symfind*
 
 Key tools: >
 	symscan.pl (code scanner, generates repo-file)
@@ -127,9 +127,9 @@ now I add the <leader> char in front of them for search in symfind: >
 	\gf     - search file in symfind
 
 ==============================================================================
-*4*  Use Symfind							*sf-using*
+4 Use Symfind							*sf-using*
 
-*4.1* Symfind Repository file (repo-file) 				*sf-repo*
+4.1 Symfind Repository file (repo-file) 				*sf-repo*
 
 A repo-file (e.g. 1.repo.gz) is a text file compressed using gzip. It contains
 one or more repository. Each repository is for one folder. e.g. >
@@ -167,7 +167,7 @@ or use "add" command of symfind: >
 	(add 1 or more repo-files)
 
 ==============================================================================
-*4.2* Query syntax						*sf-query*
+4.2 Query syntax						*sf-query*
 Query by words seperated by space; Word that contains captain letter performs 
 case-sensitive search, or else case-insensitive: >
 	> s foo Bar
@@ -221,7 +221,7 @@ symfind.pl, set envvar SYMFIND, e.g. (on Linux) >
 	$ SYMFIND=symfind.pl symsvr.pl 1.repo.gz
 
 ==============================================================================
-*4.3* Grep reference 						*sf-grep*
+4.3 Grep reference 						*sf-grep*
 
 Symfind works with GNU grep to find symbol reference. e.g. >
 	> g main
@@ -246,7 +246,7 @@ On Windows, it's recommended to run Symfind under Mingw to work with correct
 POSIX programs like grep/tee.
 
 ==============================================================================
-*4.4* Options 							*sf-options*
+4.4 Options 							*sf-options*
 
 Change max result items~
 By default 25 items are listed in the result. To change it: >
@@ -273,7 +273,7 @@ OR simply >
 The result folder name will be checked and replaced if neccessary.
 
 ==============================================================================
-*5* Use Symsvr and vim plugin					*sf-symsvr*
+5 Use Symsvr and vim plugin					*sf-symsvr*
 
 *symsvr.pl* is a program that enables symfind to be a symbol server. By
 default, it use TCP port 20000 - instance 0 (port=instance_no+20000). If you
@@ -303,7 +303,7 @@ For test, you can directly search in shell by "symsvr.pl -c": >
 	  (find symbol using instance 1 - port 20001)
 
 ==============================================================================
-*6* Contact me						*sf-contact*
+6 Contact me						*sf-contact*
 
 Liang, Jian - skyshore@gmail.com
 
