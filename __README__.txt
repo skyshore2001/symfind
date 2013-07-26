@@ -11,8 +11,8 @@
 	4.2 Query syntax				|sf-query|
 	4.3 Grep reference 				|sf-grep|
 	4.4 Options					|sf-options|
-|5| Use Symsvr and vim plugin				|sf-symsvr|
-|6| Contact me						|sf-contact|
+5 Use Symsvr and vim plugin				|sf-symsvr|
+6 Contact me						|sf-contact|
 
 ==============================================================================
 1 Introduction						*sf-intro*

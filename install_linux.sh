@@ -9,6 +9,10 @@ echo -n "binary dir? ($BIN) " ; read opt
 echo -n "vimfiles dir? ($VIMFILES) " ; read opt
 [ -n "$opt" ] && VIMFILES=$opt
 
+# kill current instance
+killall symsvr.pl 2>/dev/null && sleep 1
+killall symfind 2>/dev/null && sleep 1
+
 cp ./symscan.pl ./symfind ./symfind.pl ./symsvr.pl ./stags $BIN/
 cp ./symfind.vim $VIMFILES/plugin/
 cp ./__README__.txt $VIMFILES/doc/symfind.txt
