@@ -3,19 +3,19 @@
 	    Symfind - Locate finds and symbols for large project
 		    Liang, Jian - 2013/5
 
-1 Introduction						|sf-intro|
-2 Install						|sf-install|
-3 Quick Start						|:Symfind|
-4 Use Symfind						|sf-using|
+1. Introduction						|sf-intro|
+2. Install						|sf-install|
+3. Quick Start						|:Symfind|
+4. Use Symfind						|sf-using|
 	4.1 Repository					|sf-repo|
 	4.2 Query syntax				|sf-query|
 	4.3 Grep reference 				|sf-grep|
 	4.4 Options					|sf-options|
-5 Use Symsvr and vim plugin				|sf-symsvr|
-6 Contact me						|sf-contact|
+5. Use Symsvr and vim plugin				|sf-symsvr|
+6. Contact me						|sf-contact|
 
 ==============================================================================
-1 Introduction						*sf-intro*
+1. Introduction						*sf-intro*
 
 Symfind can be used to scan and locate file or symbol in your project folder. 
 It can work with vim.
@@ -59,20 +59,19 @@ for symbol lookup, and use simple strategy for reference lookup. It's simple,
 stable, reliable and fast.
 
 ==============================================================================
-2 Install							*sf-install*
+2. Install							*sf-install*
 
-On MS Windows, you need install Perl.
-Modify install_windows.bat for your path and just run it. It's easy and 
-just copy files to your folder.
+On Linux, run install_linux and specify your path. >
+	# sh install_linux
 
-On Linux, modify path in script install_linux and run it. 
+On MS Windows, you need install Perl and then run install_windows.bat.
 
 stags (for Linux) and stags.exe (for Windows) is included. It's used by
 symscan.pl. stags is a branch of ctags with slight change that works better
 with Symfind. You can find source code of stags in symfind source package.
 
 ==============================================================================
-3 Quick Start 						*:Symfind*
+3. Quick Start 						*:Symfind*
 
 Key tools: >
 	symscan.pl (code scanner, generates repo-file)
@@ -127,7 +126,7 @@ now I add the <leader> char in front of them for search in symfind: >
 	\gf     - search file in symfind
 
 ==============================================================================
-4 Use Symfind							*sf-using*
+4. Use Symfind							*sf-using*
 
 4.1 Symfind Repository file (repo-file) 				*sf-repo*
 
@@ -273,7 +272,7 @@ OR simply >
 The result folder name will be checked and replaced if neccessary.
 
 ==============================================================================
-5 Use Symsvr and vim plugin					*sf-symsvr*
+5. Use Symsvr and vim plugin					*sf-symsvr*
 
 *symsvr.pl* is a program that enables symfind to be a symbol server. By
 default, it use TCP port 20000 - instance 0 (port=instance_no+20000). If you
@@ -303,7 +302,7 @@ For test, you can directly search in shell by "symsvr.pl -c": >
 	  (find symbol using instance 1 - port 20001)
 
 ==============================================================================
-6 Contact me						*sf-contact*
+6. Contact me						*sf-contact*
 
 Liang, Jian - skyshore@gmail.com
 
