@@ -40,6 +40,11 @@ Yes, it is useless and just for readable. It does not take any more meory as 4 u
 use STL is simple and more readable. But I use my own data structure because: 1. I tested, loading performance decrease 5%-10%, and memory increase <5%; 2. I own all the details and possible to make it  simplest. STL depends on the provider, I cannot control the quality.
 */
 
+#ifdef _LINUX
+ // binary compatible with old glibc
+ __asm__(".symver memcpy,memcpy@GLIBC_2.2.5");
+#endif
+
 // ====== config {{{
 int MAX_FOUND = 25;
 char EDITOR[100] = "vi";

@@ -13,7 +13,7 @@ echo -n "vimfiles dir? ($VIMFILES) " ; read opt
 killall symsvr.pl 2>/dev/null && sleep 1
 killall symfind 2>/dev/null && sleep 1
 
-EXE=./symscan.pl ./symfind ./symfind.pl ./symsvr.pl ./stags
+EXE="./symscan.pl ./symfind ./symfind.pl ./symsvr.pl ./stags"
 chmod a+x $EXE
 cp $EXE $BIN/
 cp ./symfind.vim $VIMFILES/plugin/
