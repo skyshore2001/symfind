@@ -28,7 +28,7 @@ endif
 
 RelWindows=symfind.exe stags.exe gzip.exe install_windows.bat
 RelLinux=symfind stags install_linux.sh
-RelFiles=symscan.pl symfind.pl symsvr.pl __README__.txt symfind.vim $(RelWindows) $(RelLinux)
+RelFiles=symscan.pl symfind.pl symsvr.pl __README__.txt symfind.vim $(RelLinux) $(RelWindows) 
 
 RelDir=symfind-$(VER)
 RelPack=$(RelDir).tgz
