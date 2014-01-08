@@ -639,6 +639,8 @@ struct SfPattern
 			return false;
 
 		if (matchBegin || matchEnd) {
+			if (matchBegin && matchEnd)
+				return strcasecmp(s, pat) == 0;
 			return BeginWith_icase((matchBegin? s: s+slen-patlen), pat);
 		}
 		else {
@@ -657,6 +659,8 @@ struct SfPattern
 			return false;
 
 		if (matchBegin || matchEnd) {
+			if (matchBegin && matchEnd)
+				return strcmp(s, pat) == 0;
 			return BeginWith_case((matchBegin? s: s+slen-patlen), pat);
 		}
 		else {
