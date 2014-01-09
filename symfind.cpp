@@ -614,12 +614,12 @@ struct SfPattern
 		patlen = 0;
 
 		char *p = pat;
-		if (*p == '^') {
+		if (*p == '^' && *(p+1) != 0) {
 			++ p;
 			matchBegin = true;
 		}
 		char *p1 = strchr(p, 0);
-		if (p1 > p && *(p1-1) == '$') {
+		if (p1 - p > 1 && *(p1-1) == '$') {
 			*--p1 = 0;
 			matchEnd = true;
 		}
@@ -774,7 +774,7 @@ void QuerySymbol(char *arg)
 	while (p = strtok(arg, " ")) {
 		arg = NULL; // make strtok continue
 
-		if (*(p+1) == 0) { // only 1 char for pat_kind
+		if (*(p+1) == 0 && islower(*p)) { // only 1 char for pat_kind
 			if (kindlen < sizeof(pat_kind))
 				pat_kind[kindlen++] = *p;
 			continue;
