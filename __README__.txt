@@ -1,6 +1,6 @@
 *symfind.txt*	For Vim version 7.3.  Last change: 2013 June 20
 
-	    Symfind - Locate finds and symbols for large project
+	    Symfind - Locate files and symbols for large project
 		    Liang, Jian - 2013/5
 
 1. Introduction						|sf-intro|
@@ -13,6 +13,7 @@
 	4.4 Options					|sf-options|
 5. Use Symsvr and vim plugin				|sf-symsvr|
 6. Contact me						|sf-contact|
+7. FAQ							|sf-faq|
 
 ==============================================================================
 1. Introduction						*sf-intro*
@@ -311,5 +312,27 @@ Thanks to the following softwares that give my ideas: >
 	ctags 
 	vgdb
 	Visual AssistX
+
+==============================================================================
+7. FAQ       						*sf-faq*
+
+Q: Why can not such symbol be found (in apache library, util_cookie.h): >
+	AP_DECLARE(apr_status_t) ap_cookie_write(request_rec * r, const char *name,
+                                         const char *val, const char *attrs,
+                                         long maxage, ...) AP_FN_ATTR_SENTINEL;
+
+A: The macro AP_DECLARE and AP_FN_ATTR_SENTINEL cannot be recongnized by
+etags that is based on ctags and used by symscan program. You can use ctags 
+option -I to solve it, e.g. define the option in environment variable: >
+
+	$ export CTAGS=-IAP_DECLARE,AP_FN_ATTR_SENTINEL 
+	$ symscan.pl
+
+Or write this line in ctags rc file ~/.ctags or /etc/ctags.conf: >
+
+	-IAP_DECLARE,AP_FN_ATTR_SENTINEL 
+
+Read ctags manual for details on -I option.
+------------------------------------------------------------------------------
 
 vim:tw=78:ts=8:sw=8:ft=help:norl:
