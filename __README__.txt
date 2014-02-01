@@ -328,7 +328,8 @@ option -I to solve it, e.g. define the option in environment variable: >
 	$ export CTAGS=-IAP_DECLARE,AP_FN_ATTR_SENTINEL 
 	$ symscan.pl
 
-Or write this line in ctags rc file ~/.ctags or /etc/ctags.conf: >
+Or write this line in ctags rc file ~/.ctags or /etc/ctags.conf
+(%HOME%\ctags.cnf for MSWindows): >
 
 	-IAP_DECLARE,AP_FN_ATTR_SENTINEL 
 
