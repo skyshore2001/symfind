@@ -328,10 +328,15 @@ option -I to solve it, e.g. define the option in environment variable: >
 	$ export CTAGS=-IAP_DECLARE,AP_FN_ATTR_SENTINEL 
 	$ symscan.pl
 
-Or write this line in ctags rc file ~/.ctags or /etc/ctags.conf
-(%HOME%\ctags.cnf for MSWindows): >
+Or write this line in ctags rc file ~/.ctags or /etc/ctags.conf: >
 
 	-IAP_DECLARE,AP_FN_ATTR_SENTINEL 
+
+On MS Windows you have to set variable HOME and put it into file ctags.cnf: >
+
+	> (write file %userprofile%\ctags.cnf
+	> set HOME=%userprofile%
+	> symscan.pl
 
 Read ctags manual for details on -I option.
 ------------------------------------------------------------------------------
