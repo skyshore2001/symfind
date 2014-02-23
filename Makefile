@@ -1,4 +1,4 @@
-VER=2.1
+VER=2.2
 CXX=g++
 
 #CXXFLAGS=-g -std=c++0x

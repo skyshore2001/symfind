@@ -13,7 +13,6 @@ if not "%opt%"=="" set VIMFILES=%opt%
 
 :: programs
 copy symscan.pl %BIN%\
-copy symfind.pl %BIN%\
 copy symfind.exe %BIN%\
 copy symsvr.pl %BIN%\
 copy stags.exe %BIN%\

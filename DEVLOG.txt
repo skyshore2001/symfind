@@ -1,5 +1,12 @@
 BUGS:
 > on MSWIN32, stags cannot quit if break program by Ctrl-C.
+> pool symscan perforce on Windows. 
+
+2014/02/23 16:49:40
+> version 2.2
+bugfix and enahancement for symfind.
+dont release symfind.pl any more.
+add FAQ in doc.
 
 2013/07/25 17:20:46
 > version 2.1
@@ -50,4 +57,15 @@ the final result
 	/mnt/data/depot/sbo/source/1.cpp
 will be replaced to 
 	/home/depot2/sbo/source/1.cpp
+
+*) Distribution
+- Update version in symfind.cpp and Makefile
+- build on Linux (for symfind)
+	$ make
+- build on Windows
+Open MINGW32 shell (msys.bat):
+	$ make
+	$ make dist
+
+Generate symfind-{ver}.tgz
 

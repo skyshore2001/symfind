@@ -10,6 +10,8 @@
 #include <string>
 using namespace std;
 
+#define VERSION "2.2"
+
 // load 57586 files (56K), 1600408 symbols (1.6M)
 // 903M - perl
 // 223M - c++ x64, no optimization.
@@ -56,7 +58,7 @@ char SEP = '/';
 char SEP = '\\';
 #endif
 
-#define HELPSTR "\
+#define HELPSTR "symfind version " VERSION "\n--------------------\n\
 f {patterns} \n\
   file search, e.g. \"f string .h$\" \n\
 s {patterns} \n\
@@ -318,6 +320,8 @@ bool g_forsvr = getenv("SYM_SVR") != NULL;
 #define ALLOC_N(T, N) (T*)malloc(sizeof(T)*N)
 #define CALLOC_T(T) (T*)calloc(1, sizeof(T))
 #define FREE(p) free(p)
+
+#define STR_EQ(a,b) (strcmp(a, b)==0)
 
 #ifdef _WINDOWS
 #include <windows.h>
@@ -981,6 +985,17 @@ int main(int argc, const char *argv[])
 		printf("Usage: symfind <repo>\n");
 		return -1;
 	}
+	if (argv[1][0] == '-') {
+		const char *opt = argv[1]+1;
+		if (STR_EQ(opt, "v") || STR_EQ(opt, "version") || STR_EQ(opt, "-version")) {
+			printf("symfind version %s\n", VERSION);
+			return 0;
+		}
+		else {
+			printf("*** unknown option: '%s'\n", opt);
+			return 1;
+		}
+	}
 	if (g_forsvr) {
 		fputs("(for symsvr)\n", stdout);
 		setbuf(stdout, NULL);
@@ -1011,7 +1026,7 @@ int main(int argc, const char *argv[])
 		char *cmd, *arg;
 		cmd = strtok(buf, " \r\n");
 		arg = strtok(NULL, "\r\n");
-		if (strcmp(cmd, "f") == 0 || strcmp(cmd, "s") == 0) {
+		if (STR_EQ(cmd, "f") || STR_EQ(cmd, "s")) {
 			clock_t t0 = clock();
 			if (cmd[0] == 'f')
 				QueryFile(arg);
@@ -1019,27 +1034,27 @@ int main(int argc, const char *argv[])
 				QuerySymbol(arg);
 			printf("(Total %d result(s) in %.3fs.)\n", g_result.items.size(), (double)(clock()-t0)/CLOCKS_PER_SEC);
 		}
-		else if (strcmp(cmd, "g") == 0) { // grep
+		else if (STR_EQ(cmd, "g")) { // grep
 			if (arg) {
 				GrepSymbol(arg);
 			}
 		}
-		else if (strcmp(cmd, "q") == 0) {
+		else if (STR_EQ(cmd, "q")) {
 			break;
 		}
-		else if (strcmp(cmd, "?") == 0) {
+		else if (STR_EQ(cmd, "?")) {
 			Help();
 		}
-		else if (!g_forsvr && (strcmp(cmd, "go") == 0 || strcmp(cmd, "n") == 0 || strcmp(cmd, "N") == 0)) {
+		else if (!g_forsvr && (STR_EQ(cmd, "go") || STR_EQ(cmd, "n") || STR_EQ(cmd, "N"))) {
 			GotoResult(cmd, arg);
 		}
-		else if (strcmp(cmd, "editor") == 0) {
+		else if (STR_EQ(cmd, "editor")) {
 			if (arg) {
 				strcpy(EDITOR, arg);
 			}
 			printf("editor %s\n", EDITOR);
 		}
-		else if (strcmp(cmd, "max") == 0) {
+		else if (STR_EQ(cmd, "max")) {
 			if (arg) {
 				int n = atoi(arg);
 				if (n > 0) {
@@ -1048,13 +1063,13 @@ int main(int argc, const char *argv[])
 			}
 			printf("max %d\n", MAX_FOUND);
 		}
-		else if (strcmp(cmd, "root") == 0) {
+		else if (STR_EQ(cmd, "root")) {
 			if (arg) {
 				g_rootsubs.Set(arg);
 			}
 			printf("root %s\n", g_rootsubs.pattern);
 		}
-		else if (strcmp(cmd, "add") == 0) {
+		else if (STR_EQ(cmd, "add")) {
 			if (arg) {
 				int cnt = 0;
 				const char *args[10];

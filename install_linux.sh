@@ -3,6 +3,11 @@
 BIN=/usr/local/bin
 VIMFILES=/usr/share/vim/site
 
+if [[ `whoami` != "root" ]]; then
+	echo "*** Must run as root"
+	exit 1
+fi
+
 echo -n "binary dir? ($BIN) " ; read opt
 [ -n "$opt" ] && BIN=$opt
 
@@ -13,7 +18,7 @@ echo -n "vimfiles dir? ($VIMFILES) " ; read opt
 killall symsvr.pl 2>/dev/null && sleep 1
 killall symfind 2>/dev/null && sleep 1
 
-EXE="./symscan.pl ./symfind ./symfind.pl ./symsvr.pl ./stags"
+EXE="./symscan.pl ./symfind ./symsvr.pl ./stags"
 chmod a+x $EXE
 cp $EXE $BIN/
 cp ./symfind.vim $VIMFILES/plugin/
