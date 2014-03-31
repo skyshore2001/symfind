@@ -772,7 +772,7 @@ void QuerySymbol(char *arg)
 
 	char pat_kind[20] = {0};
 	char kindlen = 0;
-	vector<SfPattern> pats, pats_val;
+	vector<SfPattern> pats, pats_val, pats_path;
 
 	char *p;
 	while (p = strtok(arg, " ")) {
@@ -788,6 +788,13 @@ void QuerySymbol(char *arg)
 		if (*p == '#') {
 			++ p;
 			ppats = &pats_val;
+		}
+		else {
+			char *p1 = strchr(p, 0)-1;
+			if (*p1 == '/' || *p1 == '\\') {
+				*p1 -- = 0;
+				ppats = &pats_path;
+			}
 		}
 		ppats->push_back(SfPattern(p));
 	}
@@ -818,6 +825,15 @@ void QuerySymbol(char *arg)
 						ok = false;
 						break;
 					}
+				}
+			}
+		}
+		if (ok && pats_path.size() > 0) {
+			const SfContext &ctx = it.GetContext();
+			for (SfPattern &pat: pats_path) {
+				if (! pat.Match(ctx.file->name) && ! pat.Match(ctx.folder->name)) {
+					ok = false;
+					break;
 				}
 			}
 		}

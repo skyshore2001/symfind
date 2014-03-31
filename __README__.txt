@@ -179,10 +179,14 @@ Start-with/end-with is suppported by "^" and "$" (like regexp): >
 (Perl version *symfind.pl* uses perl-style Regexp. Thus, "." is a magic char in
  Regexp, you should use "\.cpp$" instead.)
 
-Search in folder: xxx/ ~
+Search in path: xxx/ ~
 For files, pattern that ends with "/" means search folder name: >
 	> f ace thirdparty/
 	(files that contain "ace" and in a folder that contains "thirdparty")
+
+For symbols, pattern that ends with "/" means search file name or folder name: >
+	> s ::CreateObject$ f .h/ source/
+	(member function "CreateObject" defined in header files (.h/) and under folder "source")
 
 Search symbol kind~
 For symbols, the result lists symbol names and kinds. To filter the result by
