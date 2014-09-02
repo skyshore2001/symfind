@@ -214,7 +214,7 @@ You can composite all the features. e.g. >
 	(start with "dbm", value contains "-5002" and is a "macro")
 
 2-choices: symfind and symfind.pl ~
-They have almost the same functions. *symfind* is recommended as it's re-written 
+They have almost the same functions. symfind is recommended as it's re-written 
 using C++ with speed and memory optimization.
 e.g. load 65322 files, 2022655 symbols (19M repo-file): symfind.pl uses 8.1s 
 and 1.1G memory; symfind uses 0.6s and 180M memory.  For a full symbols search 
