@@ -15,10 +15,6 @@ my $SYMFIND = $ENV{SYMFIND} || 'symfind';
 my $g_tgtpid;
 my $g_isclient = 0;
 
-open NEWERR, ">&STDERR";
-select NEWERR;
-$| = 1;
-
 ###### toolkit {{{
 sub mychop
 {
@@ -27,7 +23,7 @@ sub mychop
 
 sub msg # ($msg, [$force=0])
 {
-	print NEWERR $_[0] if $DEBUG || $_[1];
+	print STDERR $_[0] if $DEBUG || $_[1];
 }
 
 sub mydie # ($msg)
@@ -224,40 +220,13 @@ for my $repo (@argv) {
 }
 #}}}
 
-	pipe(MAIN_RD, TGT_WR);
-	pipe(TGT_RD, MAIN_WR);
-
 	my $cmd = "$SYMFIND $params";
 
-	$g_tgtpid = fork;
-	if ($g_tgtpid == 0) {  # TGT
-		close MAIN_RD;
-		close MAIN_WR;
-
-		open(STDERR, ">&TGT_WR")     || die "Can't redirect stderr";
-		open(STDOUT, ">&TGT_WR")     || die "Can't redirect stdout";
-		open(STDIN, "<&TGT_RD")    || die "Can't redirect stdin";
-
-		select TGT_WR;
-		$| = 1;
-		select STDERR;
-		$| = 1;
-		select STDOUT;
-		$| = 1;
-
-		$ENV{SYM_SVR} =1;
-		system($cmd);
-
-		close STDERR;
-		close STDOUT;
-		exit;
-	}
-
-	close TGT_RD;
-	close TGT_WR;
-
-	select MAIN_WR;
-	$| = 1;
+	$ENV{SYM_SVR} =1;
+	use IPC::Open3;
+	$g_tgtpid = open3(\*MAIN_WR, \*MAIN_RD, \*MAIN_RD, $cmd)
+		or die("start symfind error: $!\n");
+	select(MAIN_WR);    $| = 1; # make unbuffered
 
 	my $comm = CommInet->new();
 	execCmd(undef, undef); # just process init output

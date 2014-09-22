@@ -48,7 +48,9 @@ use STL is simple and more readable. But I use my own data structure because: 1.
 #endif
 
 // ====== config {{{
-int MAX_FOUND = 25;
+#define RC_FILE "symfind.rc"
+
+int DEF_MAX_FOUND = 25;
 char EDITOR[100] = "vi";
 const char *TMP_OUT = "1.out";
 
@@ -264,55 +266,37 @@ struct RootSubs
 		Set(pattern);
 	}
 	
-	void Set(const char *pattern) {
-		strcpy(m_buf, pattern);
-		char *p = m_buf, *p1 = m_buf, *p2 = NULL;
-		m_subs.clear();
-		for (; ; ++p) {
-			if (*p == '=') {
-				*p++ = 0;
-				p2 = p;
-			}
-			else if (*p == ';' || *p == 0) {
-				if (*p1 && p2 && *p2)
-					m_subs.push_back(make_pair(p1, p2));
-				if (*p == 0)
-					break;
-				*p++ = 0;
-				p1 = p;
-				p2 = NULL;
-			}
-		}
-		if (m_subs.size() > 0)
-			strcpy(this->pattern, pattern);
-		else
-			strcpy(this->pattern, "(empty)");
-	}
-	const char *Substitue(const char *s) {
-		static char buf[1024];
-		for (auto &sub: m_subs) {
-			const char *p = strstr(s, sub.first);
-			if (p) {
-				sprintf(buf, "%.*s%s%s", p-s, s, sub.second, p+strlen(sub.first));
-				return buf;
-			}
-		}
-		return s;
-	}
+	void Set(const char *pattern);
+	const char *Substitue(const char *s);
+
 private:
 	char m_buf[500];
 	vector<pair<char*, char*> > m_subs;
 };
+
+struct Session
+{
+	int id;
+	int maxFound;
+	RootSubs subs;
+};
+typedef vector<Session> Sessions;
+typedef Sessions::iterator SessionIter;
+
 // }}}
 // }}}
 
 // ====== global {{{
 SfRepo *g_repos;
 FindResult g_result;
-RootSubs g_rootsubs;
 
 bool g_forsvr = getenv("SYM_SVR") != NULL;
 
+Session *g_curSession;
+Sessions g_sessions;
+//RootSubs g_rootsubs;
+#define g_rootsubs (g_curSession->subs)
+#define MAX_FOUND (g_curSession->maxFound)
 //}}}
 
 // ====== toolkit {{{
@@ -329,6 +313,10 @@ void sleep(int sec)
 {
 	Sleep(sec * 1000);
 }
+
+#include <Shlwapi.h>
+#define stristr StrStrI
+
 #endif
 
 bool BeginWith_icase(const char *s1, const char *s2)
@@ -992,9 +980,173 @@ int TestShow()
 	}
 	return 0;
 }
+
+// ==== RootSubs {{{
+void RootSubs::Set(const char *pattern) 
+{
+	strcpy(m_buf, pattern);
+	char *p = m_buf, *p1 = m_buf, *p2 = NULL;
+	m_subs.clear();
+	for (; ; ++p) {
+		if (*p == '=') {
+			*p++ = 0;
+			p2 = p;
+		}
+		else if (*p == ';' || *p == 0) {
+			if (*p1 && p2 && *p2)
+				m_subs.push_back(make_pair(p1, p2));
+			if (*p == 0)
+				break;
+			*p++ = 0;
+			p1 = p;
+			p2 = NULL;
+		}
+	}
+	if (m_subs.size() > 0)
+		strcpy(this->pattern, pattern);
+	else
+		strcpy(this->pattern, "(empty)");
+}
+
+const char *RootSubs::Substitue(const char *s) 
+{
+	static char buf[1024];
+	for (auto &sub: m_subs) {
+#ifdef _WINDOWS
+		const char *p = stristr(s, sub.first);
+#else
+		const char *p = strstr(s, sub.first);
+#endif
+		if (p) {
+			sprintf(buf, "%.*s%s%s", p-s, s, sub.second, p+strlen(sub.first));
+			return buf;
+		}
+	}
+	return s;
+}
+//}}}
+
+// set g_sessions and g_curSession
+void InitSession(int id)
+{
+	if (g_sessions.size() == 0) {
+		Session ses;
+		ses.id = 0;
+		ses.maxFound = DEF_MAX_FOUND;
+		g_sessions.push_back(ses);
+		g_curSession = &g_sessions[0];
+	}
+
+	if (g_curSession->id == id)
+		return;
+
+	SessionIter it;
+	for (it=g_sessions.begin(); it!=g_sessions.end(); ++it) {
+		if (it->id == id)
+			break;
+	}
+
+	// not found, create it based on session 0:
+	if (it == g_sessions.end()) {
+		g_sessions.push_back(g_sessions[0]);
+		g_curSession = &g_sessions.back();
+		g_curSession->id = id;
+	}
+	else {
+		g_curSession = & *it;
+	}
+}
 // }}}
 
 // ====== main routine {{{
+// Return: 0-OK; 1-quit
+int ExecCmd(char *buf, const char *prompt = "> ")
+{
+	// shell cmd
+	if (buf[0] == '!') {
+		system(buf+1);
+		goto nx;
+	}
+
+	char *cmd, *arg;
+	int ses;
+	cmd = strtok(buf, " \r\n");
+	arg = strtok(NULL, "\r\n");
+	ses = 0;
+	while (*cmd && isdigit(*cmd)) {
+		ses = ses * 10 + (*cmd - '0');
+		++ cmd;
+	}
+// 		printf("### ses=%d, cmd='%s'\n", ses, cmd);
+	InitSession(ses);
+	if (ses != 0) {
+		printf("(session %d)\n", ses);
+	}
+	if (STR_EQ(cmd, "f") || STR_EQ(cmd, "s")) {
+		clock_t t0 = clock();
+		if (cmd[0] == 'f')
+			QueryFile(arg);
+		else // 's'
+			QuerySymbol(arg);
+		printf("(Total %d result(s) in %.3fs.)\n", g_result.items.size(), (double)(clock()-t0)/CLOCKS_PER_SEC);
+	}
+	else if (STR_EQ(cmd, "g")) { // grep
+		if (arg) {
+			GrepSymbol(arg);
+		}
+	}
+	else if (STR_EQ(cmd, "q")) {
+		return 1;
+	}
+	else if (STR_EQ(cmd, "?")) {
+		Help();
+	}
+	else if (!g_forsvr && (STR_EQ(cmd, "go") || STR_EQ(cmd, "n") || STR_EQ(cmd, "N"))) {
+		GotoResult(cmd, arg);
+	}
+	else if (!g_forsvr && STR_EQ(cmd, "editor")) {
+		if (arg) {
+			strcpy(EDITOR, arg);
+		}
+		printf("editor %s\n", EDITOR);
+	}
+	else if (STR_EQ(cmd, "max")) {
+		if (arg) {
+			int n = atoi(arg);
+			if (n > 0) {
+				MAX_FOUND = n;
+			}
+		}
+		printf("max %d\n", MAX_FOUND);
+	}
+	else if (STR_EQ(cmd, "root")) {
+		if (arg) {
+			g_rootsubs.Set(arg);
+		}
+		printf("root %s\n", g_rootsubs.pattern);
+	}
+	else if (STR_EQ(cmd, "add")) {
+		if (arg) {
+			int cnt = 0;
+			const char *args[10];
+			args[cnt++] = strtok(arg, " ");
+			while ((args[cnt] = strtok(NULL, " ")) != NULL) {
+				++ cnt;
+			}
+			LoadRepofiles(cnt, args);
+		}
+	}
+	else {
+		printf("*** unknown command: '%s'. Type '?' for help.\n", cmd);
+	}
+nx:
+// 	printf("> ");
+	printf("%s", prompt);
+	if (g_forsvr)
+		fputs("\n", stdout);
+	return 0;
+}
+
 int main(int argc, const char *argv[])
 {
 	if (argc <= 1) {
@@ -1029,80 +1181,32 @@ int main(int argc, const char *argv[])
 		return TestShow();
 
 	char buf[1024];
+	FILE *fp;
+	char rcfile[1024] = RC_FILE;
+	fp = fopen(rcfile, "r");
+	if (fp == NULL) {
+		sprintf(rcfile, "%s/%s", getenv("HOME"), RC_FILE);
+		fp = fopen(rcfile, "r");
+	}
+	if (fp)
+	{
+		const char *prompt = "rc> ";
+		printf("(load rc file: %s)\n", rcfile);
+		fputs(prompt, stdout);
+		while (fgets(buf, 1024, fp)) {
+			fputs(buf, stdout);
+			if (ExecCmd(buf, prompt))
+				break;
+		}
+		fclose(fp);
+	}
+
 	fputs("> ", stdout);
 	if (g_forsvr)
 		fputs("\n", stdout);
 	while (fgets(buf, 1024, stdin)) {
-		// shell cmd
-		if (buf[0] == '!') {
-			system(buf+1);
-			goto nx;
-		}
-
-		char *cmd, *arg;
-		cmd = strtok(buf, " \r\n");
-		arg = strtok(NULL, "\r\n");
-		if (STR_EQ(cmd, "f") || STR_EQ(cmd, "s")) {
-			clock_t t0 = clock();
-			if (cmd[0] == 'f')
-				QueryFile(arg);
-			else // 's'
-				QuerySymbol(arg);
-			printf("(Total %d result(s) in %.3fs.)\n", g_result.items.size(), (double)(clock()-t0)/CLOCKS_PER_SEC);
-		}
-		else if (STR_EQ(cmd, "g")) { // grep
-			if (arg) {
-				GrepSymbol(arg);
-			}
-		}
-		else if (STR_EQ(cmd, "q")) {
+		if (ExecCmd(buf))
 			break;
-		}
-		else if (STR_EQ(cmd, "?")) {
-			Help();
-		}
-		else if (!g_forsvr && (STR_EQ(cmd, "go") || STR_EQ(cmd, "n") || STR_EQ(cmd, "N"))) {
-			GotoResult(cmd, arg);
-		}
-		else if (STR_EQ(cmd, "editor")) {
-			if (arg) {
-				strcpy(EDITOR, arg);
-			}
-			printf("editor %s\n", EDITOR);
-		}
-		else if (STR_EQ(cmd, "max")) {
-			if (arg) {
-				int n = atoi(arg);
-				if (n > 0) {
-					MAX_FOUND = n;
-				}
-			}
-			printf("max %d\n", MAX_FOUND);
-		}
-		else if (STR_EQ(cmd, "root")) {
-			if (arg) {
-				g_rootsubs.Set(arg);
-			}
-			printf("root %s\n", g_rootsubs.pattern);
-		}
-		else if (STR_EQ(cmd, "add")) {
-			if (arg) {
-				int cnt = 0;
-				const char *args[10];
-				args[cnt++] = strtok(arg, " ");
-				while ((args[cnt] = strtok(NULL, " ")) != NULL) {
-					++ cnt;
-				}
-				LoadRepofiles(cnt, args);
-			}
-		}
-		else {
-			printf("*** unknown command: '%s'. Type '?' for help.\n", cmd);
-		}
-nx:
-		printf("> ");
-		if (g_forsvr)
-			fputs("\n", stdout);
 	}
 	FreeRepos();
 	

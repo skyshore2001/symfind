@@ -80,6 +80,11 @@ func! SF_call(cmd)
 		return
 	endif
 	let s = getline(1)
+	if s:mymatch(s, '^\v(\d+)\w')
+		let b:sf_ses = s:match[1]
+	elseif exists('b:sf_ses')
+		let s = b:sf_ses . s
+	endif
 	let cmd = 'symsvr.pl -c "' . s . '"'
 	if exists('b:sf_instno') && b:sf_instno != 0
 		let cmd .= ' :' . b:sf_instno
@@ -124,6 +129,7 @@ func! SF_go(splitwnd)
 	let cmd = 'e ' . substitute(f, '\v(.+):(\d+)$', '+\2 \1', '')
 "	call confirm(cmd)
 	exec cmd
+	foldopen!
 endf
 
 command! -nargs=? Symfind :call s:openSymfind(<q-args>)

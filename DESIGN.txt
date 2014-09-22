@@ -1,0 +1,40 @@
+==============================================================================
+Sessions
+
+By default, symfind uses a global session for all users, also named session 0.
+A number can be prepend on a command to mark the session number. 
+
+When a new session is created, it copys config in session 0 as init value.
+Current config for a session: >
+	max
+	root
+
+e.g. create session and run command in a session >
+	1root xx=yy
+	(Set "root" config for session 1. Session 1 can be created auto if
+	it's not used before.)
+
+	1s hello
+	(Search symbol in session 1.)
+
+	s hello
+	Search symbol in session 0 (the default session).
+
+In vim, the addon can remember the session you have just used >
+
+	1s hello
+	(Search symbol in session 1. And session 1 will be used in the following commands.)
+
+	s world
+	(Search symbol in session 1. the same as "1s world")
+
+==============================================================================
+RC file
+
+{curdir}/symfind.rc or $HOME/symfind.rc will be loaded when symfind starts.
+e.g. >
+	max 50
+	1root /home/builder/depot=/home/builder/depot2
+	2root 9.1_DEV=9.1_COR
+
+vim:tw=78:ts=8:sw=8:ft=help:norl:
