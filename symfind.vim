@@ -129,7 +129,9 @@ func! SF_go(splitwnd)
 	let cmd = 'e ' . substitute(f, '\v(.+):(\d+)$', '+\2 \1', '')
 "	call confirm(cmd)
 	exec cmd
-	foldopen!
+	if has('folding')
+		silent! foldopen!
+	endif
 endf
 
 command! -nargs=? Symfind :call s:openSymfind(<q-args>)
