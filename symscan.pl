@@ -11,7 +11,7 @@ use Time::HiRes;
 
 ###### config {{{
 my $REPO_VER = 2;
-my $repofile = '1.repo.gz';
+my $repofile = 'tags.repo.gz';
 my $TAGSCAN_PAT = '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s;*.pl;*.py';
 my $IGNORE_PAT = '*.o;*.obj;*.d;.*';
 #}}}
@@ -216,7 +216,7 @@ sub handleFile # ($name, $dirname, $repo)
 $| = 1;
 # @ARGV=("$ENV{SBO_BASE}/Source/Infrastructure", "$ENV{SBO_BASE}/Source/Client");
 if (@ARGV == 0) {
-	print "Usage: symscan.pl {folder(s)|repo-file(s)} [-o {outfile=1.repo.gz}]\n";
+	print "Usage: symscan.pl {folder(s)|repo-file(s)} [-o {outfile=tags.repo.gz}]\n";
 	exit;
 }
 

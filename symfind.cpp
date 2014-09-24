@@ -1079,9 +1079,6 @@ int ExecCmd(char *buf, const char *prompt = "> ")
 	}
 // 		printf("### ses=%d, cmd='%s'\n", ses, cmd);
 	InitSession(ses);
-	if (ses != 0) {
-		printf("(session %d)\n", ses);
-	}
 	if (STR_EQ(cmd, "f") || STR_EQ(cmd, "s")) {
 		clock_t t0 = clock();
 		if (cmd[0] == 'f')
@@ -1140,6 +1137,9 @@ int ExecCmd(char *buf, const char *prompt = "> ")
 		printf("*** unknown command: '%s'. Type '?' for help.\n", cmd);
 	}
 nx:
+	if (ses != 0) {
+		printf("(session %d)\n", ses);
+	}
 // 	printf("> ");
 	printf("%s", prompt);
 	if (g_forsvr)

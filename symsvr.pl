@@ -10,6 +10,8 @@ my $INST_NO = 0;
 my $DEBUG = $ENV{DEBUG};
 my $IS_MSWIN = $^O eq 'MSWin32';
 my $SYMFIND = $ENV{SYMFIND} || 'symfind';
+my $SYMSCAN = $ENV{SYMSCAN} || 'symscan.pl';
+my $DEF_REPO = 'tags.repo.gz';
 
 ###### global
 my $g_tgtpid;
@@ -126,6 +128,23 @@ package main;
 #}}}
 
 ###### function {{{
+sub showHelp
+{
+	print "Usage: symsvr [repo=$DEF_REPO] [:{instance_no=0}]
+e.g.
+  symsvr
+  symsvr 1.repo.gz
+  symsvr myprj.gz :1
+
+Show help:
+  symsvr -h
+Run as client:
+  symsvr -c {cmd} [:{instance_no=0}]
+e.g.
+  symsvr -c \"f dbm\" :1
+";
+}
+
 sub runClient # ($cmds)
 {
 	my ($cmds) = @_;
@@ -171,20 +190,6 @@ sub execCmd # ($comm, $cmd, [$hideout=0])
 ###### main routine
 
 ### parse args {{{
-if (@ARGV == 0) {
-	print "Usage: symsvr {repo} [:{instance_no=0}]
-e.g.
-  symsvr 1.repo.gz
-  symsvr myprj.gz :1
-
-Run as client:
-  symsvr -c {cmd} [:{instance_no=0}]
-e.g.
-  symsvr -c \"f dbm\" :1
-";
-	exit;
-}
-
 my $params = '';
 my @argv;
 for (@ARGV) {
@@ -200,6 +205,10 @@ for (@ARGV) {
 	elsif ($_ eq '-c') {
 		$g_isclient = 1;
 	}
+	elsif ($_ eq '-h') {
+		showHelp();
+		exit;
+	}
 	else {
 		$params .= $_ . ' ';
 		push @argv, $_;
@@ -210,6 +219,20 @@ chop $params if $params;
 if ($g_isclient) {
 	runClient($params);
 	exit;
+}
+
+if (@argv == 0)
+{
+	unless (-f $DEF_REPO) {
+		print "!!! no repo file. scan current folder ...\n";
+		system("$SYMSCAN .");
+	}
+	unless (-f $DEF_REPO) {
+		print "*** cannot find symbol repo: $DEF_REPO.";
+		exit(-1);
+	}
+	$params = $DEF_REPO;
+	push @argv, $DEF_REPO;
 }
 
 for my $repo (@argv) {
