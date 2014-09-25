@@ -6,12 +6,14 @@
 1. Introduction						|sf-intro|
 2. Install						|sf-install|
 3. Quick Start						|:Symfind|
-4. Use Symfind						|sf-using|
-	4.1 Repository					|sf-repo|
-	4.2 Query syntax				|sf-query|
-	4.3 Grep reference 				|sf-grep|
-	4.4 Options					|sf-options|
-5. Use Symsvr and vim plugin				|sf-symsvr|
+4. Use Symsvr and vim plugin				|sf-symsvr|
+5. Use Symfind						|sf-using|
+	5.1 Repository					|sf-repo|
+	5.2 Query syntax				|sf-query|
+	5.3 Grep reference 				|sf-grep|
+	5.4 Options					|sf-options|
+	5.5 Session 					|sf-session|
+	5.6 RC file 					|sf-rc|
 6. Contact me						|sf-contact|
 7. FAQ							|sf-faq|
 
@@ -116,7 +118,39 @@ As |g]| and |gf| are default vim shortcut for locate a symbol (tag) and file,
 here I just add the <leader> char in front of them.
 
 ==============================================================================
-4. Use Symfind							*sf-using*
+4. Use Symsvr and vim plugin					*sf-symsvr*
+
+*symsvr.pl* is a program that enables symfind to be a symbol server. By
+default, it use TCP port 20000 - instance 0 (port=instance_no+20000). If you
+want to use another instance/port: >
+	$ symsvr.pl 1.repo.gz
+	  (TCP/20000)
+	$ symsvr.pl 2.repo.gz :1
+	  (TCP/20001)
+
+The vim plugin~
+
+After the server starts, you can start vim to search. Use :Symfind command to 
+open the search window. >
+	:Symfind
+or use the default mapped shortcut: >
+	\sf
+
+If you use instance 1, the command is like this: >
+	:Symfind :1
+or >
+	\1sf
+
+Symsvr as a client~
+
+For test, you can directly search in shell by "symsvr.pl -c": >
+	$ symsvr.pl -c "f sbo string"
+	  (find file)
+	$ symsvr.pl -c "s hello world" :1
+	  (find symbol using instance 1 - port 20001)
+
+==============================================================================
+5. Use Symfind							*sf-using*
 
 Key components: >
 	symscan.pl (code scanner, generates repo-file)
@@ -159,7 +193,8 @@ It's the command-line interface: >
 	> q
 	(quit)
 	
-4.1 Symfind Repository file (repo-file) 				*sf-repo*
+==============================================================================
+5.1 Symfind Repository file (repo-file) 				*sf-repo*
 
 A repo-file (e.g. tags.repo.gz) is a text file compressed using gzip. It contains
 one or more repository. Each repository is for one folder. e.g. >
@@ -174,9 +209,6 @@ To update the repo-file actually re-scan the original 2 folders: >
 To update and add new folder to the repository: >
 	$ symscan.pl tags.repo.gz /home/data/dir3
 
-*Note*
-you can rename the output repo-file. But don't remove the extension name ".gz".
-
 Pattern for scanning file~
 2 variables are available for you to customize the scanning.
 IGNORE_PAT 
@@ -189,6 +221,7 @@ TAGSCAN_PAT
 (TODO: set envvar to customize)
 
 Load and use multiple repo-files ~
+
 symfind simply supports more than 1 repositories: >
 	$ symfind 1.repo.gz 2.repo.gz 3.repo.gz
 
@@ -199,7 +232,7 @@ or use "add" command after symfind starts: >
 	(add 1 or more repo-files)
 
 ==============================================================================
-4.2 Query syntax						*sf-query*
+5.2 Query syntax						*sf-query*
 
 Query by words separated by space; Word that contains captain letter performs 
 case-sensitive search, or else case-insensitive: >
@@ -264,7 +297,7 @@ symfind.pl, set envvar SYMFIND, e.g. (on Linux) >
 	$ SYMFIND=symfind.pl symsvr.pl 1.repo.gz
 
 ==============================================================================
-4.3 Grep reference 						*sf-grep*
+5.3 Grep reference 						*sf-grep*
 
 Symfind works with GNU grep to find symbol reference. e.g. >
 	> g main
@@ -289,7 +322,7 @@ On Windows, it's recommended to run Symfind under Mingw to work with correct
 POSIX programs like grep/tee.
 
 ==============================================================================
-4.4 Options 							*sf-options*
+5.4 Options 							*sf-options*
 
 Change max result items~
 
@@ -316,39 +349,96 @@ the root is "/mnt/data/depot/sbo". If you moved it to another path, e.g.
 OR simply >
 	> root depot=depot2
 
-The result folder name will be checked and replaced if neccessary.
+The result folder name will be checked and replaced if necessary.
 
 ==============================================================================
-5. Use Symsvr and vim plugin					*sf-symsvr*
+5.5 Session						*sf-session*
 
-*symsvr.pl* is a program that enables symfind to be a symbol server. By
-default, it use TCP port 20000 - instance 0 (port=instance_no+20000). If you
-want to use another instance/port: >
-	$ symsvr.pl 1.repo.gz &
-	  (TCP/20000)
-	$ symsvr.pl 2.repo.gz :1 &
-	  (TCP/20001)
+By default, symfind uses a global session for all users, also named session 0.
+A number can be prepend on a command to mark the session number. 
 
-The vim plugin~
+When a new session is created, it copies options in session 0 as init value.
+Current options for a session: >
+	max
+	root
 
-After the server starts, you can start vim to search. Use :Symfind command to 
-open the search window. >
-	:Symfind
-or use the default mapped shortcut: >
-	\sf
+e.g. create session and run command in a session >
+	1root xx=yy
+	(Set "root" for session 1. Session 1 is auto created if
+	it's not used before.)
 
-If you use instance 1, the command is like this: >
-	:Symfind :1
-or >
-	\1sf
+	1s hello
+	(Search symbol in session 1.)
 
-Symsvr as a client~
+	s hello
+	Search symbol in session 0 (the default session).
 
-For test, you can directly search in shell by "symsvr.pl -c": >
-	$ symsvr.pl -c "f sbo string"
-	  (find file)
-	$ symsvr.pl -c "s hello world" :1
-	  (find symbol using instance 1 - port 20001)
+In vim, the plugin can remember the session you have just used >
+
+	1s hello
+	(Search symbol in session 1. And session 1 will be used in the following commands.)
+
+	s world
+	(Search symbol in session 1. the same as "1s world")
+
+------------------------------------------------------------------------------
+Usage of session~
+
+You have scanned workspace folder "/home/depot" and run symsvr for it, and now 
+create new workspace on "/home/depot2" (almost the same content as /home/depot).
+
+You have two options to search symbols respectively for the 2 workspace.
+
+Option 1: use multiple instances~
+
+Scan the new folder and run symsvr on another instance (e.g. :2) >
+	$ cd /home/depot
+	$ symsvr.pl
+	(default instance :0 for /home/depot)
+
+	$ cd /home/depot2
+	$ symsvr.pl :2
+	(instance :2 for /home/depot2)
+
+Then open symfind for instance :2 in vim for /home/depot2: >
+	:Symfind :2
+
+Option 2: use multiple sessions~
+
+Share the same repo file and use 2 sessions respectively for the 2
+workspaces.
+
+Use symfind session 2 for /home/depot2, open symfind window and type command: >
+
+	2root /home/depot=/home/depot2
+	s
+	(search symbols in session 2)
+
+It uses the same symsvr but does not affect other sessions hosted in other vim.
+
+You can save the options in RC file, e.g. save "root" in $HOME/symfind.rc: >
+
+	1root /home/depot=/home/depot1
+	2root /home/depot=/home/depot2
+
+Then run command in symfind window of vim and switch sessions: >
+
+	2s (switch to session 2 and search symbols in /home/depot2)
+	f (search files in session 2: /home/depot2)
+	1f (switch to session 1 and search files in /home/depot1)
+	0s (switch to session 0 and search files in /home/depot)
+
+==============================================================================
+5.6 RC file						*sf-rc*
+
+The following RC file will be loaded if it exists when symfind starts: >
+	{curdir}/symfind.rc
+	$HOME/symfind.rc
+
+Often it's used to set some symfind options.  e.g. >
+	max 50
+	1root /home/builder/depot=/home/builder/depot2
+	2root 9.1_DEV=9.1_COR
 
 ==============================================================================
 6. Contact me						*sf-contact*

@@ -1,17 +1,17 @@
 ==============================================================================
-Sessions
+Session
 
 By default, symfind uses a global session for all users, also named session 0.
 A number can be prepend on a command to mark the session number. 
 
-When a new session is created, it copys config in session 0 as init value.
-Current config for a session: >
+When a new session is created, it copies options in session 0 as init value.
+Current options for a session: >
 	max
 	root
 
 e.g. create session and run command in a session >
 	1root xx=yy
-	(Set "root" config for session 1. Session 1 can be created auto if
+	(Set "root" for session 1. Session 1 is auto created if
 	it's not used before.)
 
 	1s hello
@@ -20,7 +20,7 @@ e.g. create session and run command in a session >
 	s hello
 	Search symbol in session 0 (the default session).
 
-In vim, the addon can remember the session you have just used >
+In vim, the plugin can remember the session you have just used >
 
 	1s hello
 	(Search symbol in session 1. And session 1 will be used in the following commands.)
@@ -28,11 +28,60 @@ In vim, the addon can remember the session you have just used >
 	s world
 	(Search symbol in session 1. the same as "1s world")
 
+------------------------------------------------------------------------------
+Usage of session~
+
+You have scanned workspace folder "/home/depot" and run symsvr for it, and now 
+create new workspace on "/home/depot2" (almost the same content as /home/depot).
+
+You have two options to search symbols respectively for the 2 workspace.
+
+------------------------------------------------------------------------------
+Option 1: scan the new folder and run symsvr on another instance (e.g. :2) >
+	$ cd /home/depot
+	$ symsvr.pl
+	(default instance :0 for /home/depot)
+
+	$ cd /home/depot2
+	$ symsvr.pl :2
+	(instance :2 for /home/depot2)
+
+Then open symfind for instance :2 in vim for /home/depot2: >
+	:Symfind :2
+	(or shortcut "\1sf")
+
+------------------------------------------------------------------------------
+Option 2: share the same repo file and use 2 sessions respectively for the 2
+workspaces.
+
+Use symfind session 2 for /home/depot2, open symfind window and type command: >
+
+	2root /home/depot=/home/depot2
+	s
+	(or "2s", the same as "s")
+
+It uses the same symsvr but does not affect other sessions hosted in other vim.
+
+You can save the options in RC file, e.g. save "root" in $HOME/symfind.rc: >
+
+	1root /home/depot=/home/depot1
+	2root /home/depot=/home/depot2
+
+Then run command in symfind window of vim and switch sessions: >
+
+	2s (switch to session 2 and search symbols in /home/depot2)
+	f (search files in session 2: /home/depot2)
+	1f (switch to session 1 and search files in /home/depot1)
+	0s (switch to session 0 and search files in /home/depot)
+
 ==============================================================================
 RC file
 
-{curdir}/symfind.rc or $HOME/symfind.rc will be loaded when symfind starts.
-e.g. >
+The following RC file will be loaded if it exists when symfind starts: >
+	{curdir}/symfind.rc
+	$HOME/symfind.rc
+
+Often it's used to set some symfind options.  e.g. >
 	max 50
 	1root /home/builder/depot=/home/builder/depot2
 	2root 9.1_DEV=9.1_COR
