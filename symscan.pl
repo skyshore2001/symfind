@@ -235,7 +235,7 @@ if ($ARGV[0] =~ /\.gz$/) {
 	$repofile = $ARGV[0];
 }
 if (defined $outfile) {
-	$outfile .= '.gz' if $outfile !~ /.gz/i;
+	$outfile .= '.repo.gz' if $outfile !~ /\.gz/i;
 }
 else {
 	$outfile = $repofile;

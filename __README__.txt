@@ -18,80 +18,129 @@
 ==============================================================================
 1. Introduction						*sf-intro*
 
-Symfind can be used to scan and locate file or symbol in your project folder. 
-It can work with vim.
+Symfind is used to search file or symbol in your project folder. 
 
-Why do we use this tool? Let's compare to some similar tools:
-	ctags
-	vim + fuzzyfind
-	cscope
-	source navigator
-	global
+It's designed for large project with easy but powerful query, better performance 
+and small symbol repository. It's simple, stable, reliable and fast.
 
-Key features of Symfind:
-- natural search pattern for file or symbol (|sf-query|)
-  e.g. Search a symbol that contains "res" and "linux". Most tools cannot do
-  this partly search and require full symbol name or at least the part it
-  begins with. Some tools can use regexp pattern like ".*res.*linux.*", but
-  you have to try ".*linux.*res.*" if the order is different. And more, it's
-  very slow. 
- 
-  Symfind directly use the natural pattern "res linux". And it performs in-memory
-  search, so very fast.
+It is recommended to work with vim as front-end UI.
 
-- small database
-  The size of my project folder is ~7G, and contains ~60000 source files. ctags 
-  generates tag file that is >300M. 
-  Source navigator produce >1G repository.
-  Symfind scans the folder in 3 minutes, and the repo-file is about 17M.
+Comparison with other tools~
 
-- simple, stable and reliable
-  In my project, I tried some tools, some cannot find some symbol, or cannot find xref.
-  I use cscope in vim, but it often lose connection.
-  Symfind uses grep directly on orignial files, slower but safe.
+I am working for a project with 60,000 source files (33,000 for C++, and others 
+for java/js/html/scripts) and 2,700,000 symbols (function/macro/class).
 
-- value search for macro or variable
+On a powerful server (80 CPU Cores with 256G memory), I tried ctags: >
+	ctags --c-types=+px -R .
+and cscope: >
+	cscope -Rq
+
+With tags I can locate symbol quickly in vim using full name, but it 
+turns very hard if I want to query symbols that contain "object" and "isvalid". 
+More critical, it may have bug on my huge project that vim throw "tag format error"
+when I search ":ts /object.*isvalid".
+
+Cscope is powerful to find cross-reference, but the query I want is not available 
+as well. And I have to say the tool is unstable for my project. 
+
+Compare: 
+	   Repo-size    Scan time     Query symbols contains "object" and "isvalid"
+
+ctags      566M         126s          vim cmd ":ts /object.*isvalid"
+				      throw "tag format error" after 4s.
+cscope     900M(only C++) 100s        cannot find the definition, just find reference
+
+symfind    27M          44s           symfind cmd "f object isvalid"
+				      get matched results less than 1s.
+
+- Symfind use simple but powerful query for file or symbol (|sf-query|)
+  And it is very fast as it performs in-memory search.
+
+- Simple, stable and reliable
+  It works very well for large project. 
+
+- Specific functions like find macro or variable by value
+  e.g. you get an error code -5002 and want to query the macro defined for it.
   Other tools have to use grep. 
-
-- vim integration
-
-Symfind is designed for easy locating symbols in large project. It is powerful 
-for symbol lookup, and use simple strategy for reference lookup. It's simple,
-stable, reliable and fast.
 
 ==============================================================================
 2. Install							*sf-install*
 
 On Linux, run install_linux and specify your path. >
-	# sh install_linux
+	# sh install_linux.sh
 
 On MS Windows, you need install Perl and then run install_windows.bat.
 
-stags (for Linux) and stags.exe (for Windows) is included. It's used by
-symscan.pl. stags is a branch of ctags with slight change that works better
-with Symfind. You can find source code of stags in symfind source package.
+Symfind use its own "stags" to scan folders. I have pre-compiled binary for
+MS Windows (stags.exe) and SuSE Linux 11 (stags). Please find the source code 
+of stags and compile on your system.
+
+Note: stags is a branch of ctags with slight change that works better
+with Symfind.
 
 ==============================================================================
 3. Quick Start 						*:Symfind*
 
-Key tools: >
+Enter your project folder and run symsvr: >
+	$ symsvr.pl
+
+It will load symbol repo file "tags.repo.gz" in current folder. If the repo
+does not exist, it will call "symscan" tool to scan current folder recursively.
+
+Then start vim/gvim to find files or symbols. Default vim shortcut "\sf" is
+installed to open symfind window: >
+
+	\sf
+
+Or run this vim command: >
+
+	:Symfind
+
+Now input command in the Symfind window. e.g. find some C++ source file which
+name contains "hello": >
+	f .cpp hello
+
+To find C++ function which name contains "main", input: >
+	s main f
+("f" means type is function, refer to |sf-query| for detail.)
+
+Go to the result by press <Enter> or double-click.
+
+These shortcuts are set to find file or symbol under cursor: >
+	\g]  or \<c-]>
+	        - search symbol under cursor in symfind
+	\gf     - search file under cursor in symfind
+
+How to remember:
+As |g]| and |gf| are default vim shortcut for locate a symbol (tag) and file,
+here I just add the <leader> char in front of them.
+
+==============================================================================
+4. Use Symfind							*sf-using*
+
+Key components: >
 	symscan.pl (code scanner, generates repo-file)
 	symfind (search engine, command-line interface)
 	symsvr.pl (search engine server, TCP/IP interface, a wrapper of symfind)
-	symfind.vim (the vim plugin)
-	stags, gzip (the required program, must copy to the binary path)
+	symfind.vim (enable vim as client to work with symsvr.pl)
 
-First, scan your project using symscan.pl. >
+To use symfind, first use symscan to generate symbol repository for your project 
+folder, then use symsvr to load the repo: >
+	$ symscan.pl $SBO_BASE/Source
+	$ symsvr.pl
+
+The default repository name is "tags.repo.gz". You can specify the repo name 
+with option "-o", e.g. >
 	$ symscan.pl $SBO_BASE/Source -o b1
 
-It will create repository b1.gz. If you don't use option "-o", the default
-repository is named 1.repo.gz.
+It will create repository "b1.repo.gz". To update this repository: >
+	$ symscan.pl b1.repo.gz
 
-To update the repository: >
-	$ symscan.pl b1.gz
+Run symsvr to work with vim: >
+	$ symsvr.pl b1.repo.gz
 
-After the repo is ready, you can run symfind or symsvr.pl.  >
-	$ symfind b1.gz
+Alternatively (often for debug purpose), you can run symfind for command-line UI: >
+	$ symfind b1.repo.gz
 
 It's the command-line interface: >
 	> ?
@@ -110,38 +159,20 @@ It's the command-line interface: >
 	> q
 	(quit)
 	
-To work with vim, first run symsvr: >
-	$ symsvr.pl b1.gz
-
-Then open symfind window in vim/gvim: >
-	:Symfind
-OR >
-	\sf
-
-Now input command in the Symfind window, and go to the result by press <Enter>
-or double-click.
-
-As |<c-]>| and |gf| are default vim shortcut for locate a symbol (tag) and file,
-now I add the <leader> char in front of them for search in symfind: >
-	\<c-]>  - search symbol in symfind
-	\gf     - search file in symfind
-
-==============================================================================
-4. Use Symfind							*sf-using*
-
 4.1 Symfind Repository file (repo-file) 				*sf-repo*
 
-A repo-file (e.g. 1.repo.gz) is a text file compressed using gzip. It contains
+A repo-file (e.g. tags.repo.gz) is a text file compressed using gzip. It contains
 one or more repository. Each repository is for one folder. e.g. >
-	$ symscan.pl /home/data/dir1 /home/data/dir2 -o 1.repo
-The generated repo-file (1.repo.gz) actually contains 2 repos respectively 
+	$ symscan.pl /home/data/dir1 /home/data/dir2
+
+The generated repo-file (tags.repo.gz) actually contains 2 repos respectively 
 for the 2 folders.
 
 To update the repo-file actually re-scan the original 2 folders: >
-	$ symscan.pl 1.repo.gz
+	$ symscan.pl tags.repo.gz
 
 To update and add new folder to the repository: >
-	$ symscan.pl 1.repo.gz /home/data/dir3
+	$ symscan.pl tags.repo.gz /home/data/dir3
 
 *Note*
 you can rename the output repo-file. But don't remove the extension name ".gz".
@@ -160,7 +191,8 @@ TAGSCAN_PAT
 Load and use multiple repo-files ~
 symfind simply supports more than 1 repositories: >
 	$ symfind 1.repo.gz 2.repo.gz 3.repo.gz
-or use "add" command of symfind: >
+
+or use "add" command after symfind starts: >
 	$ symfind 1.repo.gz
 	(now enter symfind command-line interface)
 	> add 2.repo.gz 3.repo.gz
@@ -168,18 +200,21 @@ or use "add" command of symfind: >
 
 ==============================================================================
 4.2 Query syntax						*sf-query*
-Query by words seperated by space; Word that contains captain letter performs 
+
+Query by words separated by space; Word that contains captain letter performs 
 case-sensitive search, or else case-insensitive: >
 	> s foo Bar
 	(symbols contain "foo" (case-insensitive) and "Bar" (case-sensitive))
 
-Start-with/end-with is suppported by "^" and "$" (like regexp): >
+Start-with/end-with is suppported by "^" and "$" (like regexp but limited): >
 	> f ^Sbo .cpp$
 	(files start with "Sbo" and end with ".cpp")
+
 (Perl version *symfind.pl* uses perl-style Regexp. Thus, "." is a magic char in
  Regexp, you should use "\.cpp$" instead.)
 
 Search in path: xxx/ ~
+
 For files, pattern that ends with "/" means search folder name: >
 	> f ace thirdparty/
 	(files that contain "ace" and in a folder that contains "thirdparty")
@@ -189,6 +224,7 @@ For symbols, pattern that ends with "/" means search file name or folder name: >
 	(member function "CreateObject" defined in header files (.h/) and under folder "source")
 
 Search symbol kind~
+
 For symbols, the result lists symbol names and kinds. To filter the result by
 kind, use the first character of the kind name, e.g. "c" for "class": >
 	> s string
@@ -196,6 +232,7 @@ kind, use the first character of the kind name, e.g. "c" for "class": >
 	 "function", "macro" and "member")
 	> s string c
 	(just find "class")
+
 If it cannot filter kinds with the first-char, use the 2nd (or 3rd...): >
 	> s string m
 	(find "member" or "macro")
@@ -205,6 +242,7 @@ If it cannot filter kinds with the first-char, use the 2nd (or 3rd...): >
 	(find "member")
 
 Search symbol value: #xxx ~
+
 For symbols, pattern that starts with "#" means search in values. E.g. you get
 a error code -5002 and want to see if some macro is defined by this value: >
 	> s #-5002
@@ -214,6 +252,7 @@ You can composite all the features. e.g. >
 	(start with "dbm", value contains "-5002" and is a "macro")
 
 2-choices: symfind and symfind.pl ~
+
 They have almost the same functions. symfind is recommended as it's re-written 
 using C++ with speed and memory optimization.
 e.g. load 65322 files, 2022655 symbols (19M repo-file): symfind.pl uses 8.1s 
@@ -253,10 +292,12 @@ POSIX programs like grep/tee.
 4.4 Options 							*sf-options*
 
 Change max result items~
+
 By default 25 items are listed in the result. To change it: >
 	> max 50
 
 Change editor~
+
 By default "vi" is used to open file, to change it: >
 	> editor
 	(view the current editor)
@@ -265,6 +306,7 @@ By default "vi" is used to open file, to change it: >
 	(change editor)
 
 Change root~
+
 Root is the top-level folder name when you scan your project. e.g. >
 	$ symscan.pl /mnt/data/depot/sbo
 the root is "/mnt/data/depot/sbo". If you moved it to another path, e.g.
@@ -288,6 +330,7 @@ want to use another instance/port: >
 	  (TCP/20001)
 
 The vim plugin~
+
 After the server starts, you can start vim to search. Use :Symfind command to 
 open the search window. >
 	:Symfind
@@ -300,6 +343,7 @@ or >
 	\1sf
 
 Symsvr as a client~
+
 For test, you can directly search in shell by "symsvr.pl -c": >
 	$ symsvr.pl -c "f sbo string"
 	  (find file)
