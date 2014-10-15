@@ -595,17 +595,24 @@ void FreeRepos()
 // ==== search files and symbols {{{
 struct SfPattern
 {
+public:
 	const char *pat;
-	bool matchBegin, matchEnd;
+	bool matchBegin, matchEnd, logicalNot;
 	int patlen;
 	bool (SfPattern::*fnMatch)(const char *s);
 	
 	SfPattern(char *pat) {
 		matchBegin =false;
 		matchEnd = false;
+		logicalNot = false;
 		patlen = 0;
 
 		char *p = pat;
+		if (*p == '!' && *(p+1) != 0) {
+			++ p;
+			logicalNot = true;
+		}
+
 		if (*p == '^' && *(p+1) != 0) {
 			++ p;
 			matchBegin = true;
@@ -620,9 +627,13 @@ struct SfPattern
 
 		fnMatch = ContainsUpper(p)? &SfPattern::Match_case: &SfPattern::Match_icase;
 	}
-	bool Match(const char *s) {
-		return (this->*fnMatch)(s);
+	// match s OR s2
+	bool Match(const char *s, const char *s2 = NULL) {
+		bool ret = (this->*fnMatch)(s) || (s2 && (this->*fnMatch)(s2));
+		return logicalNot ^ ret;
 	}
+
+protected:
 	bool Match_icase(const char *s) {
 		if (patlen <= 0)
 			return true;
@@ -643,6 +654,7 @@ struct SfPattern
 		}
 		return false;
 	}
+
 	bool Match_case(const char *s) {
 		if (patlen <= 0)
 			return true;
@@ -819,7 +831,7 @@ void QuerySymbol(char *arg)
 		if (ok && pats_path.size() > 0) {
 			const SfContext &ctx = it.GetContext();
 			for (SfPattern &pat: pats_path) {
-				if (! pat.Match(ctx.file->name) && ! pat.Match(ctx.folder->name)) {
+				if (! pat.Match(ctx.file->name, ctx.folder->name)) {
 					ok = false;
 					break;
 				}

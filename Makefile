@@ -1,8 +1,11 @@
 VER=2.3a
 CXX=g++
 
-#CXXFLAGS=-g -std=c++0x
+ifndef BUILD_DEBUG
 CXXFLAGS=-O2 -std=c++0x
+else
+CXXFLAGS=-g -std=c++0x
+endif
 
 ifdef windir
   IS_MSWIN=1

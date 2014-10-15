@@ -243,14 +243,22 @@ Start-with/end-with is suppported by "^" and "$" (like regexp but limited): >
 	> f ^Sbo .cpp$
 	(files start with "Sbo" and end with ".cpp")
 
-(Perl version *symfind.pl* uses perl-style Regexp. Thus, "." is a magic char in
+The leading "!" means logical "NOT" (Note: from version 2.3): >
+	> f !^Sbo .cpp$
+	(files NOT start with "Sbo", but end with ".cpp")
+
+(Note: [Obselate] Perl version *symfind.pl* uses perl-style Regexp. Thus, "." is a magic char in
  Regexp, you should use "\.cpp$" instead.)
 
 Search in path: xxx/ ~
 
 For files, pattern that ends with "/" means search folder name: >
 	> f ace thirdparty/
-	(files that contain "ace" and in a folder that contains "thirdparty")
+	(files that contain "ace" and in a folder that contains "thirdparty"
+	 NOTE: the folder string does not contain the root dir)
+
+	> f ace !thirdparty/
+	(files that contain "ace" and NOT in a folder that contains "thirdparty")
 
 For symbols, pattern that ends with "/" means search file name or folder name: >
 	> s ::CreateObject$ f .h/ source/
