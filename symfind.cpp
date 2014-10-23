@@ -941,7 +941,8 @@ void GrepSymbol(char *arg)
 
 	SfRepoIter it(g_repos);
 	while (it.Next()) {
-		p += sprintf(p, " \"%s\"", it.Value()->root);
+		const char *root = g_rootsubs.Substitue(it.Value()->root);
+		p += sprintf(p, " \"%s\"", root);
 	}
 	if (g_forsvr) {
 		printf("%s\n", gcmd);
@@ -1024,6 +1025,7 @@ const char *RootSubs::Substitue(const char *s)
 {
 	static char buf[1024];
 	for (auto &sub: m_subs) {
+		// note: windows path is case-insensitive; linux path is case-sensitive
 #ifdef _WINDOWS
 		const char *p = stristr(s, sub.first);
 #else
