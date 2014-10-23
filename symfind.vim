@@ -94,7 +94,9 @@ func! SF_call(cmd)
 	call setline(2, s:sp)
 	silent! 3,$d
 	call setline(3, rv)
-	if s =~ '\v^g\s+'
+	" for 'g' command
+	if s =~ '\v^(\d*)g\s+'
+		" exec grep command (returned by server) at client-side.
 		exec "!" . rv[0] . "|tee 1.out"
 		if winnr('$') != 1
 			q
