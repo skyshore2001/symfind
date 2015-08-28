@@ -210,15 +210,14 @@ To update and add new folder to the repository: >
 	$ symscan.pl tags.repo.gz /home/data/dir3
 
 Pattern for scanning file~
-2 variables are available for you to customize the scanning.
+
+2 environment variables are available for you to customize the scanning.
 IGNORE_PAT 
 	(default value = '*.o;*.obj;*.d;.*')
 	Don't record such files into repo.
 TAGSCAN_PAT 
 	(default value = '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s')
 	Scan such files for symbols.
-
-(TODO: set envvar to customize)
 
 Load and use multiple repo-files ~
 
