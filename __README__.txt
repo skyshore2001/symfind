@@ -212,12 +212,25 @@ To update and add new folder to the repository: >
 Pattern for scanning file~
 
 2 environment variables are available for you to customize the scanning.
+
 IGNORE_PAT 
 	(default value = '*.o;*.obj;*.d;.*')
 	Don't record such files into repo.
 TAGSCAN_PAT 
-	(default value = '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s')
+	(default value = '*')
 	Scan such files for symbols.
+
+e.g. If you want to specify which files you are interested: >
+
+	(on Windows)
+	set TAGSCAN_PAT=*.c;*.cpp;*.h
+	(NOTE: don's use any quotes like "")
+
+	(on Linux)
+	export TAGSCAN_PAT=*.c;*.cpp;*.h
+
+	symscan.pl .
+
 
 Load and use multiple repo-files ~
 
