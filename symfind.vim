@@ -89,6 +89,11 @@ func! SF_call(cmd)
 	if exists('b:sf_instno') && b:sf_instno != 0
 		let cmd .= ' :' . b:sf_instno
 	endif
+	" NOTE: since gvim 7.4, default shellxquote=() for cmd.exe, which causes
+	" system("xx.pl") cannot return anything.
+	if has('win32')
+		set shellxquote=
+	endif
 	let rv = split(system(cmd), "\n")
 
 	call setline(2, s:sp)
