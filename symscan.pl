@@ -45,6 +45,9 @@ sub mtime # ($file)
 sub patToRE # ($pat)
 {
 	local $_ = shift;
+	# remove wrong quotes
+	s/^["'](.*)["']$/$1/;
+
 	s/\s//g;
 	# escape
 	s/([.|()^\$])/\\$1/g;

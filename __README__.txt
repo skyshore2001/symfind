@@ -224,7 +224,6 @@ e.g. If you want to specify which files you are interested: >
 
 	(on Windows)
 	set TAGSCAN_PAT=*.c;*.cpp;*.h
-	(NOTE: don's use any quotes like "")
 
 	(on Linux)
 	export TAGSCAN_PAT=*.c;*.cpp;*.h

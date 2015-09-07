@@ -16,6 +16,7 @@ endif
 ifdef IS_MSWIN
 Bin=symfind.exe
 CXXFLAGS+=-D_WINDOWS -U__STRICT_ANSI__
+LDFLAGS+=-static
 
 symfind.exe: symfind.cpp
 	$(CXX) $(CXXFLAGS) $< $(LDFLAGS) -o $@ 
