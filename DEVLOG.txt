@@ -1,6 +1,17 @@
-BUGS:
-> on MSWIN32, stags cannot quit if break program by Ctrl-C.
-> pool symscan perforce on Windows. 
+2015/10/20 15:33:00
+> version 2.3
+NEW:
+> support symfind.rc
+> support multiple sessions
+> user defined scan pattern (envvar TAGSCAN_PAT/IGNORE_PAT)
+> stags supports php & javascript better.
+> Auto repo update
+
+Enhance:
+> auto foldopen when it goes to a position
+> Use "tags.repo.gz" as the default repo file for symscan and symsvr.
+  Support 0-arg for symsvr.pl (auto scan and load default repo), just like ctags.
+>  support logical NOT in the query string
 
 2014/02/23 16:49:40
 > version 2.2

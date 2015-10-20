@@ -242,6 +242,23 @@ or use "add" command after symfind starts: >
 	> add 2.repo.gz 3.repo.gz
 	(add 1 or more repo-files)
 
+Auto repo update ~
+
+(Note: from version 2.3)
+
+|symsvr.pl| auto update the symbol DB (by default every 2 hours). It can be changed 
+by env var `P_UPDATE` : >
+
+	$ export P_UPDATE=2h  # 2 hours
+	$ export P_UPDATE=10  # 10 minutes
+	$ export P_UPDATE=10m  # 10 minutes
+	$ export P_UPDATE=20s  # 20 seconds
+	$ symsvr.pl
+	(use "set" on Windows)
+
+Alternatively, command "u" can be used for a immediate repo update. >
+	> u
+
 ==============================================================================
 5.2 Query syntax						*sf-query*
 

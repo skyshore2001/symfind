@@ -13,9 +13,14 @@ my $SYMFIND = $ENV{SYMFIND} || 'symfind';
 my $SYMSCAN = $ENV{SYMSCAN} || 'symscan.pl';
 my $DEF_REPO = 'tags.repo.gz';
 
+# update frequency: e.g. "2h" - 2hours; "30"/"30m" - 30min; "30s"
+my $UPDATE = $ENV{P_UPDATE} || "2h";
+
 ###### global
 my $g_tgtpid;
 my $g_isclient = 0;
+my $g_cont = 0;
+my $g_updateCmd;
 
 ###### toolkit {{{
 sub mychop
@@ -38,7 +43,7 @@ sub mydie # ($msg)
 sub getTcpPort # ()
 {
 	my $p = $ENV{TCP_PORT} || $DEF_PORT + $INST_NO;
-	msg("=== TCP_PORT=$p\n", 1) if !$g_isclient;
+	msg("=== TCP_PORT=$p\n", 1) if !$g_isclient && !$g_cont;
 	return $p;
 }
 
@@ -60,7 +65,7 @@ sub new # ({isclient=>0})
 			PeerAddr => '127.0.0.1',
 			PeerPort => $TCP_PORT,
 			Proto => 'tcp',
-		) or main::mydie("cannot open socket.");
+		) or main::mydie("cannot connect to server.");
 	}
 	else {
 		$this->{sock} = IO::Socket::INET->new (
@@ -185,6 +190,55 @@ sub execCmd # ($comm, $cmd, [$hideout=0])
 	return; # undef - quit server
 }
 
+sub logtm
+{
+	my @a = localtime(time);
+	sprintf("%d/%02d/%02d %02d:%02d:%02d", $a[5]+1900,$a[4]+1, $a[3], $a[2], $a[1], $a[0]);
+}
+
+sub getUpdateTm # ()
+{
+	if ($UPDATE !~ /^(\d+)([hms])?$/) {
+		$UPDATE = "2h"; # default: 2h
+		return 2*3600; 
+	}
+	if (!defined($2) || $2 eq 'm') {
+		return $1 * 60;
+	}
+	elsif ($2 eq 'h') {
+		return $1 * 3600;
+	}
+	else {
+		return $1 + 0;
+	}
+}
+
+# ret: $thr
+sub updateProc # ()
+{
+	use threads;
+	use threads::shared;
+	share($g_cont);
+
+	my $thr = threads->create(sub {
+		sleep(5);
+		while (1) {
+			my $n = getUpdateTm();
+			if ($n == 0) {
+				sleep(1);
+				next;
+			}
+
+			# scan
+			system($g_updateCmd);
+			$g_cont = 1;
+			runClient("q");
+			sleep($n);
+		}
+	});
+	$thr->detach();
+	return $thr;
+}
 #}}}
 
 ###### main routine
@@ -244,8 +298,13 @@ for my $repo (@argv) {
 #}}}
 
 	my $cmd = "$SYMFIND $params";
+	$g_updateCmd = "$SYMSCAN $params";
 
 	$ENV{SYM_SVR} =1;
+
+	my $thrUpdate = updateProc();
+
+again:
 	use IPC::Open3;
 	$g_tgtpid = open3(\*MAIN_WR, \*MAIN_RD, \*MAIN_RD, $cmd)
 		or die("start symfind error: $!\n");
@@ -253,8 +312,10 @@ for my $repo (@argv) {
 
 	my $comm = CommInet->new();
 	execCmd(undef, undef); # just process init output
-	msg ("=== server is ready.\n", 1);
+	msg ("=== [" . logtm() . "] server is ready. (update=$UPDATE)\n", 1);
 	exit if !$IS_MSWIN && fork != 0;
+
+	$g_cont = 0;
 	while(1)
 	{
 		local $_ = $comm->get() || '';
@@ -263,10 +324,21 @@ for my $repo (@argv) {
 			$DEBUG = $1;
 			next;
 		}
+		if (/^u$/) {
+			system($g_updateCmd);
+			$comm->put("update done.\n");
+			$g_cont = 1;
+			last;
+		}
 
 		my $hideout = 0; # s/^@//;
 		my $rv = execCmd($comm, $_, $hideout);
 		last unless defined $rv;
+	}
+
+	$comm->destroy();
+	if ($g_cont) {
+		goto again;
 	}
 
 # vim: set foldmethod=marker :
