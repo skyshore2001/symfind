@@ -21,6 +21,7 @@ my $g_tgtpid;
 my $g_isclient = 0;
 my $g_cont = 0;
 my $g_updateCmd;
+my $g_repo;
 
 ###### toolkit {{{
 sub mychop
@@ -218,22 +219,28 @@ sub updateProc # ()
 {
 	use threads;
 	use threads::shared;
+	use File::stat;
+	
 	share($g_cont);
 
 	my $thr = threads->create(sub {
-		sleep(5);
 		while (1) {
-			my $n = getUpdateTm();
-			if ($n == 0) {
+			my $sec = getUpdateTm();
+			if ($sec == 0) {
 				sleep(1);
 				next;
+			}
+			my $diff = time() - stat($g_repo)->mtime;
+			if ($diff < $sec) {
+				# print "sleep " . ($sec - $diff) . "\n";;
+				sleep($sec - $diff);
 			}
 
 			# scan
 			system($g_updateCmd);
 			$g_cont = 1;
 			runClient("q");
-			sleep($n);
+			sleep($sec);
 		}
 	});
 	$thr->detach();
@@ -268,6 +275,7 @@ for (@ARGV) {
 		push @argv, $_;
 	}
 }
+$g_repo = $argv[0] || $DEF_REPO;
 chop $params if $params;
 
 if ($g_isclient) {
@@ -298,7 +306,7 @@ for my $repo (@argv) {
 #}}}
 
 	my $cmd = "$SYMFIND $params";
-	$g_updateCmd = "$SYMSCAN $params";
+	$g_updateCmd = "$SYMSCAN \"$g_repo\"";
 
 	$ENV{SYM_SVR} =1;
 
