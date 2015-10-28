@@ -346,6 +346,7 @@ again:
 	}
 
 	$comm->destroy();
+	waitpid($g_tgtpid, 0);
 	if ($g_cont) {
 		goto again;
 	}
