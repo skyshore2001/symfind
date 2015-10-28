@@ -232,12 +232,13 @@ sub updateProc # ()
 			}
 			my $diff = time() - stat($g_repo)->mtime;
 			if ($diff < $sec) {
-				# print "sleep " . ($sec - $diff) . "\n";;
+#				print "plan=$sec, diff=$diff, sleep " . ($sec - $diff) . "\n";;
 				sleep($sec - $diff);
 			}
 
 			# scan
 			system($g_updateCmd);
+			printf("=== Repo is updated.\n");
 			$g_cont = 1;
 			runClient("q");
 			sleep($sec);
