@@ -238,7 +238,7 @@ sub updateProc # ()
 
 			# scan
 			system($g_updateCmd);
-			printf("=== Repo is updated.\n");
+			print "=== Repo is updated.\n";
 			$g_cont = 1;
 			runClient("q");
 			sleep($sec);
