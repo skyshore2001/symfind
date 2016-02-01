@@ -11,6 +11,9 @@ and small symbol repository. It's simple, stable, reliable and fast.
 
 It is recommended to work with vim as front-end UI.
 
+Screenshot:
+![Screenshot](https://github.com/skyshore2001/symfind/raw/master/screenshot.png)
+
 ## Why I invent this tool
 
 I have worked for a project with 60,000 source files (33,000 for C++, and others 
