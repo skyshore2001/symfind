@@ -16,6 +16,7 @@
 	5.6 RC file 					|sf-rc|
 6. Contact me						|sf-contact|
 7. FAQ							|sf-faq|
+8. Develop symfind					|sf-dev|
 
 ==============================================================================
 1. Introduction						*sf-intro*
@@ -514,5 +515,44 @@ On MS Windows you have to set variable HOME and put it into file ctags.cnf: >
 
 Read ctags manual for details on -I option.
 ------------------------------------------------------------------------------
+Q: Symsvr does not work. 
+
+A: Many possibilities. Here are some cases.
+
+Wrong gzip version.~
+
+On Windows OS, symsvr is pending and NEVER output >
+
+	=== server is ready
+
+symfind outputs >
+
+	=== loading tags.repo.gz...
+	load 824 files, 4120 symbols in 0.020s.
+
+	gzip: stdout: Broken pipe
+
+Fix: It uses some other gzip.exe in your system. Please find it and use gzip.exe in the symfind folder. >
+
+	which gzip
+
+------------------------------------------------------------------------------
+
+==============================================================================
+8. Develop symfind						*sf-dev*
+
+Build and distribute: >
+	(Update version in symfind.cpp and Makefile)
+	$ make
+	$ make dist
+It generates `symfind-{ver}.tgz`.
+On windows OS, use MINGW32 shell (msys.bat).
+
+Show debug info: >
+	export DEBUG=1
+	symsvr
+
+Build debug version of symfind: >
+	make BUILD_DEBUG=1
 
 vim:tw=78:ts=8:sw=8:ft=help:norl:
