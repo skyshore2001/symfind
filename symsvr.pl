@@ -66,7 +66,7 @@ sub new # ({isclient=>0})
 			PeerAddr => '127.0.0.1',
 			PeerPort => $TCP_PORT,
 			Proto => 'tcp',
-		) or main::mydie("cannot connect to server.");
+		) or main::mydie("cannot connect to server (port=$TCP_PORT).");
 	}
 	else {
 		$this->{sock} = IO::Socket::INET->new (
