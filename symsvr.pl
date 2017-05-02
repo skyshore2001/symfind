@@ -19,7 +19,7 @@ my $UPDATE = $ENV{P_UPDATE} || "2h";
 ###### global
 my $g_tgtpid;
 my $g_isclient = 0;
-my $g_cont = 0;
+my $g_sig = ''; # update/quit/""
 my $g_updateCmd;
 my $g_repo;
 
@@ -44,7 +44,7 @@ sub mydie # ($msg)
 sub getTcpPort # ()
 {
 	my $p = $ENV{TCP_PORT} || $DEF_PORT + $INST_NO;
-	msg("=== TCP_PORT=$p\n", 1) if !$g_isclient && !$g_cont;
+	msg("=== TCP_PORT=$p\n", 1) if !$g_isclient && !$g_sig;
 	return $p;
 }
 
@@ -100,11 +100,17 @@ sub put # ($line)
 	print $sck $line;
 }
 
-sub get
+# return: content or '<timeout>' for recv timeout
+sub get # (\%opt={timeout})
 {
 	my $this = shift;
+	my ($opt) = @_;
 	my $sck;
 	local $_;
+	if ($opt->{timeout}) {
+		$this->{sock}->timeout($opt->{timeout});
+	}
+
 	if ($this->{isclient}) {
 		$sck = $this->{sock};
 	}
@@ -114,6 +120,7 @@ sub get
 			delete $this->{session};
 		}
 		$sck = $this->{session} = $this->{sock}->accept();
+		return '<timeout>' if !defined $sck; # timeout
 	}
 	$_ = <$sck>;
 }
@@ -221,7 +228,7 @@ sub updateProc # ()
 	use threads::shared;
 	use File::stat;
 	
-	share($g_cont);
+	share($g_sig);
 
 	my $thr = threads->create(sub {
 		while (1) {
@@ -239,9 +246,9 @@ sub updateProc # ()
 			# scan
 			system($g_updateCmd);
 			print "=== Repo is updated.\n";
-			$g_cont = 1;
-			runClient("q");
-			sleep($sec);
+			$g_sig = 'update';
+			# runClient("q");
+			sleep($sec+1);
 		}
 	});
 	$thr->detach();
@@ -313,6 +320,11 @@ for my $repo (@argv) {
 
 	my $thrUpdate = updateProc();
 
+	# Ctrl-C for graceful quit
+	$SIG{INT} = sub {
+		$g_sig = 'quit';
+	};
+
 again:
 	use IPC::Open3;
 	$g_tgtpid = open3(\*MAIN_WR, \*MAIN_RD, \*MAIN_RD, $cmd)
@@ -324,10 +336,12 @@ again:
 	msg ("=== [" . logtm() . "] server is ready. (update=$UPDATE)\n", 1);
 	exit if !$IS_MSWIN && fork != 0;
 
-	$g_cont = 0;
+	$g_sig = '';
 	while(1)
 	{
-		local $_ = $comm->get() || '';
+		local $_ = $comm->get({timeout=>1});
+		last if $g_sig;
+		next if $_ eq '<timeout>';
 		mychop($_);
 		if (/\.debug=(\d)/ ) {
 			$DEBUG = $1;
@@ -336,7 +350,7 @@ again:
 		if (/^u$/) {
 			system($g_updateCmd);
 			$comm->put("update done.\n");
-			$g_cont = 1;
+			$g_sig = 'update';
 			last;
 		}
 
@@ -345,9 +359,11 @@ again:
 		last unless defined $rv;
 	}
 
+	select STDOUT;
 	$comm->destroy();
+	print MAIN_WR "q\n"; # quit the symfind-process
 	waitpid($g_tgtpid, 0);
-	if ($g_cont) {
+	if ($g_sig eq 'update') {
 		goto again;
 	}
 
