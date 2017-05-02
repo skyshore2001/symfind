@@ -227,32 +227,39 @@ sub updateProc # ()
 	use threads;
 	use threads::shared;
 	use File::stat;
-	
+
+	checkUpdateRepo();
 	share($g_sig);
 
 	my $thr = threads->create(sub {
 		while (1) {
-			my $sec = getUpdateTm();
-			if ($sec == 0) {
-				sleep(1);
-				next;
-			}
-			my $diff = time() - stat($g_repo)->mtime;
-			if ($diff < $sec) {
-#				print "plan=$sec, diff=$diff, sleep " . ($sec - $diff) . "\n";;
-				sleep($sec - $diff);
-			}
-
-			# scan
-			system($g_updateCmd);
-			print "=== Repo is updated.\n";
-			$g_sig = 'update';
-			# runClient("q");
-			sleep($sec+1);
+			my $sec = checkUpdateRepo();
+			sleep($sec);
 		}
 	});
 	$thr->detach();
 	return $thr;
+}
+
+# return: seconds to sleep
+sub checkUpdateRepo # ()
+{
+	my $sec = getUpdateTm();
+	if ($sec == 0) {
+		return 1;
+	}
+	my $diff = time() - stat($g_repo)->mtime;
+	if ($diff < $sec) {
+#				print "plan=$sec, diff=$diff, sleep " . ($sec - $diff) . "\n";;
+		return ($sec - $diff);
+	}
+
+	# scan
+	system($g_updateCmd);
+	print "=== Repo is updated.\n";
+	$g_sig = 'update';
+	# runClient("q");
+	return ($sec+1);
 }
 #}}}
 
