@@ -1076,6 +1076,9 @@ void InitSession(int id)
 // Return: 0-OK; 1-quit
 int ExecCmd(char *buf, const char *prompt = "> ")
 {
+	char defaultCmd[20] = "?\n";
+	if (buf[0] == '\n' || buf[0] == '\r')
+		buf = defaultCmd;
 	// shell cmd
 	if (buf[0] == '!') {
 		system(buf+1);
