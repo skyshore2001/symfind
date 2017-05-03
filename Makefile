@@ -55,3 +55,10 @@ clean:
 
 clobber:
 	-rm -rf $(Bin) $(RelDir) $(RelPack)
+
+install:
+	@sh install_linux.sh
+
+uninstall:
+	@sh install_linux.sh -u
+

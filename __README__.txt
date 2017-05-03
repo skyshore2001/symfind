@@ -79,7 +79,7 @@ MS Windows (stags.exe) and SuSE Linux 11 (stags). Please find the source code
 of stags and compile on your system.
 
 Note: stags is a branch of ctags with slight change that works better
-with Symfind.
+with Symfind: https://github.com/skyshore2001/stags
 
 ==============================================================================
 3. Quick Start 						*:Symfind*
