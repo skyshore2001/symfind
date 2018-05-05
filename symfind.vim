@@ -26,14 +26,17 @@ func! s:openSymfind(exname)
 	endif
 
 	let wnr = bufwinnr(bufname)
-	let bexists = bufexists(bufname)
+	let bnr = bufnr(bufname)
 	if wnr != -1
 		exe wnr . 'wincmd w'
+	elseif bnr != -1
+		new
+		exe 'b' . bnr
 	else
 		exe 'new ' . bufname
 		let b:preview = 0
 	endif
-	if !bexists
+	if bnr == -1
 		let b:sf_instno = instno
 		setl buftype=nofile
 		setl noswapfile
