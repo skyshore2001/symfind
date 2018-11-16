@@ -8,6 +8,7 @@ use File::Basename;
 use Getopt::Long;
 use IPC::Open2;
 use Time::HiRes;
+use Encode;
 
 ###### config {{{
 my $REPO_VER = 2;
@@ -15,10 +16,13 @@ my $repofile = 'tags.repo.gz';
 my $TAGSCAN_PAT = $ENV{TAGSCAN_PAT} || '*'; 
 # '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s;*.pl;*.py';
 my $IGNORE_PAT = $ENV{IGNORE_PAT} || '*.o;*.obj;*.d;.*';
+
+my $MSWIN_ENC = 'gbk';
 #}}}
 
 ###### globals {{{
 my $IS_MSWIN = $^O eq 'MSWin32';
+my $IS_MSYS = $^O eq 'msys';
 my $sep = $IS_MSWIN? '\\': '/';
 
 my $CWD = mygetcwd();
@@ -65,6 +69,9 @@ sub patToRE # ($pat)
 sub mygetcwd
 {
 	local $_ = getcwd();
+	if ($IS_MSYS) {
+		s+/(\w)/+$1:/+; # /d/prog -> d:/prog
+	}
 	s/\//\\/g if $IS_MSWIN;
 	$_;
 }
@@ -77,7 +84,7 @@ sub getAbsPath # ($path)
 		return $CWD;
 	}
 	s/^\.[\/\\]//;  # ./symscan.pl -> symscan.pl
-	unless (/^[\/\\]/ || ($IS_MSWIN && /^\w:/))
+	unless (/^[\/\\]/ || (($IS_MSWIN || $IS_MSYS) && /^\w:/))
 	{
 		$_ = $CWD . $sep . $_;
 	}
@@ -93,7 +100,7 @@ sub getSym # ($file)
 	if (!defined $ctag_out) {
 		return if !defined $file;
 		my $CTAGS = dirname($PROG) . $sep . 'stags';
-		$CTAGS .= '.exe' if $IS_MSWIN;
+		$CTAGS .= '.exe' if $IS_MSWIN || $IS_MSYS;
 		die "*** $CTAGS does not exist or cannot run!" unless -f $CTAGS;
 		print "=== use ctags: $CTAGS\n" if $ENV{DEBUG};
 		# --format=99: my own format
@@ -106,6 +113,9 @@ sub getSym # ($file)
 		close I;
 		undef $ctag_out;
 		return;
+	}
+	if ($IS_MSYS) {
+		Encode::from_to($file, 'utf-8', $MSWIN_ENC);
 	}
 	print $ctag_out "$file\n";
 
@@ -173,6 +183,9 @@ sub handleDir # ($name, $dirname)
 	$dirname =~ s/\//\\/g if $IS_MSWIN;
 	my $fname = $name eq '.'? $dirname: $dirname . $sep . $name;
 	my $mtime1 = mtime($name);
+	if ($IS_MSWIN) {
+		Encode::from_to($fname, $MSWIN_ENC, 'utf-8');
+	}
 	print O "\td\t$fname\t$mtime1\n";
 }
 
@@ -192,7 +205,11 @@ sub handleFile # ($name, $dirname, $repo)
 
 	++ $filecnt;
 	if (!(defined $fileobj) || $mtime1 > $fileobj->{mtime}) {
-		print O "\tf\t$name\t$mtime1\n";
+		my $name1 = $name;
+		if ($IS_MSWIN) {
+			Encode::from_to($name1, $MSWIN_ENC, 'utf-8');
+		}
+		print O "\tf\t$name1\t$mtime1\n";
 		++ $updFilecnt if $forUpdate;
 		print "### scan $fname\n" if $ENV{DEBUG};
 
