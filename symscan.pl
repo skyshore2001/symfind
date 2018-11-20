@@ -14,6 +14,7 @@ use Encode;
 my $REPO_VER = 2;
 my $repofile = 'tags.repo.gz';
 my $TAGSCAN_PAT = $ENV{TAGSCAN_PAT} || '*'; 
+my $TAGSCAN_IGNORE_PAT = "*[.-]min.js";
 # '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s;*.pl;*.py';
 my $IGNORE_PAT = $ENV{IGNORE_PAT} || '*.o;*.obj;*.d;.*';
 
@@ -34,7 +35,7 @@ my $symcnt = 0;
 my $filecnt = 0;
 my $updFilecnt = 0;
 
-my ($tagScanRE, $ignoreRE);
+my ($tagScanRE, $tagIgnoreRE, $ignoreRE);
 
 #}}}
 
@@ -91,6 +92,7 @@ sub getAbsPath # ($path)
 	$_;
 }
 
+# getSym(undef) means the end.
 my $ctag_out;
 sub getSym # ($file)
 {
@@ -213,7 +215,8 @@ sub handleFile # ($name, $dirname, $repo)
 		++ $updFilecnt if $forUpdate;
 		print "### scan $fname\n" if $ENV{DEBUG};
 
-		if (!defined $tagScanRE || $name =~ /$tagScanRE/) {
+		if ((!defined $tagScanRE || $name =~ /$tagScanRE/)
+			&& (!defined $tagIgnoreRE || $name !~ /$tagIgnoreRE/)) {
 			my $f = mygetcwd() . $sep . $name;
 			$symcnt += getSym($f);
 		}
@@ -308,6 +311,7 @@ for (@ARGV) {
 
 		$ignoreRE = patToRE($IGNORE_PAT);
 		$tagScanRE = patToRE($TAGSCAN_PAT);
+		$tagIgnoreRE = patToRE($TAGSCAN_IGNORE_PAT);
 
 		my $T0 = Time::HiRes::time();
 		chdir $root;
