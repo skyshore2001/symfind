@@ -1,10 +1,10 @@
-VER=2.3a
+VER=2.3
 CXX=g++
 
 ifndef BUILD_DEBUG
-CXXFLAGS=-O2 -std=c++0x
+CXXFLAGS=-O2 -std=c++11
 else
-CXXFLAGS=-g -std=c++0x
+CXXFLAGS=-g -std=c++11
 endif
 
 ifdef windir
@@ -32,9 +32,16 @@ endif
 
 RelWindows=symfind.exe stags.exe gzip.exe install_windows.bat
 RelLinux=symfind stags install_linux.sh
-RelFiles=symscan.pl symfind.pl symsvr.pl __README__.txt symfind.vim $(RelLinux) $(RelWindows) 
 
-RelDir=symfind-$(VER)
+ifdef IS_MSWIN
+RelFiles=symscan.pl symfind.pl symsvr.pl __README__.txt symfind.vim $(RelWindows) 
+RelDir=symfind-$(VER)-w32
+else
+RelFiles=symscan.pl symfind.pl symsvr.pl __README__.txt symfind.vim $(RelLinux)
+# TODO: now only for centos 7 (el7). try `uname -r`
+RelDir=symfind-$(VER)-el7
+endif
+
 RelPack=$(RelDir).tgz
 
 all: $(Bin)
@@ -42,6 +49,7 @@ all: $(Bin)
 # method 1. make rel on Linux
 # method 2. make on mingw, make on Linux, make rel on mingw or Linux
 dist: all $(RelPack) 
+	@echo === package $(RelPack) is created.
 
 $(RelPack): $(addprefix $(RelDir)/,$(RelFiles))
 	tar zcf $(RelDir).tgz $(RelDir)
