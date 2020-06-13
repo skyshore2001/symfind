@@ -16,7 +16,7 @@ my $repofile = 'tags.repo.gz';
 my $TAGSCAN_PAT = $ENV{TAGSCAN_PAT} || '*'; 
 my $TAGSCAN_IGNORE_PAT = "*[.-]min.js";
 # '*.c;*.cpp;*.h;*.hpp;*.cc;*.mak;*.cs;*.java;*.s;*.pl;*.py';
-my $IGNORE_PAT = $ENV{IGNORE_PAT} || '*.o;*.obj;*.d;.*';
+my $IGNORE_PAT = $ENV{IGNORE_PAT} || '*.o;*.obj;*.d;.*;node_modules';
 
 my $MSWIN_ENC = 'gbk';
 #}}}
